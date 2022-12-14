@@ -1,0 +1,69 @@
+'''
+This file contains the code for the Flask server that will be used to route orders.
+'''
+
+# local imports
+from smart_order_router import route_orders
+
+# third party imports
+from flask import Flask, request, jsonify
+import asyncio
+from asyncio import Queue
+
+app = Flask(__name__)
+
+# define the maximum number of concurrent requests
+MAX_CONCURRENT_REQUESTS = 10
+
+# create a queue to store the incoming requests
+request_queue = Queue(maxsize=MAX_CONCURRENT_REQUESTS)
+# create the event loop
+loop = asyncio.get_event_loop()
+
+'''
+INPUTS:
+sell_symbol: the symbol of the token to sell, string, e.g. 'USDC'
+sell_ID: the ID of the token to sell, string, e.g. '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+sell_amount: the amount of the token to sell, float, e.g. 100000
+buy_symbol: the symbol of the token to buy, string, e.g. 'WETH'
+buy_ID: the ID of the token to buy, string, e.g. '0xc02
+
+OUTPUTS:
+result: a dictionary containing the pool graph, path graph, and routes
+- pool_graph: a dictionary of lists mapping each node to its neighbors
+- path_graph: a dictionary of lists mapping each node to its neighbors
+- routes: a list of routes, each route is a list of swaps
+
+see example.ipynb for example outputs
+
+sample queries (when running locally):
+100,000 USDC for WETH
+http://localhost:5000/order_router?sell_symbol=WETH&sell_ID=0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2&sell_amount=100000&buy_symbol=USDC&buy_ID=0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48
+
+50,000 DAI for LINK
+http://localhost:5000/order_router?sell_symbol=DAI&sell_ID=0x6b175474e89094c44da98b954eedeac495271d0f&sell_amount=50000&buy_symbol=LINK&buy_ID=0x514910771af9ca656af840dff83e8264ecf986ca
+
+250,000 FTM for AGIX
+http://localhost:5000/order_router?sell_symbol=FTM&sell_ID=0x4e15361fd6b4bb609fa63c81a2be19d873717870&sell_amount=250000&buy_symbol=AGIX&buy_ID=0x5b7533812759b45c2b44c19e320ba2cd2681b542
+'''
+@app.route('/order_router', methods=['GET'])
+async def order_router():
+    # get the input parameters from the request
+    sell_symbol = str(request.args.get('sell_symbol'))
+    sell_ID = str(request.args.get('sell_ID'))
+    sell_amount = float(request.args.get('sell_amount'))
+    buy_symbol = str(request.args.get('buy_symbol'))
+    buy_ID = str(request.args.get('buy_ID'))
+
+    # create a task to run the coroutine
+    task = asyncio.create_task(route_orders(sell_symbol, sell_ID, sell_amount, buy_symbol, buy_ID))
+    # add the task to the queue
+    request_queue.put_nowait(task)
+    # wait for the task to complete
+    result = await task
+    # return the result as a JSON response
+    return jsonify(result)
+
+# run the Flask app
+if __name__ == '__main__':
+    app.run()
