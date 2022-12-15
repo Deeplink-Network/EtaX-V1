@@ -35,6 +35,7 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
                         f'swap_{swap_number}': {
                             'pool': pool,
                             'input_token': sell_symbol,
+                            'input_amount': sell_amount,
                             'output_token': output_symbol,
                             'output_amount': output_amount,
                             'price_impact': price_impact,
@@ -46,6 +47,7 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
                     swap_number += 1
 
                 else:
+                    input_amount = output_amount
                     values = xyk_price_impact(G.nodes[pool]['pool'], output_symbol, output_amount)
                     # {'actual_return': actual_return, 'price_impact': price_impact, 'buy_symbol': pool[f'token{buy_token}']['symbol'], 'description': description}
                     output_symbol = values['buy_symbol']
@@ -57,10 +59,11 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
                     routes[f'route_{count}'][f'swap_{swap_number}'] = {
                         'pool': pool,
                         'input_token': output_symbol,
+                        'input_amount': input_amount,
                         'output_token': output_symbol,
                         'output_amount': output_amount,
                         'price_impact': price_impact,
-                        'price': sell_amount/output_amount,
+                        'price': input_amount/output_amount,
                         'gas_fee': gas_fee,
                         'description': description
                     }

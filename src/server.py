@@ -22,19 +22,21 @@ loop = asyncio.get_event_loop()
 
 '''
 INPUTS:
-sell_symbol: the symbol of the token to sell, string, e.g. 'USDC'
-sell_ID: the ID of the token to sell, string, e.g. '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
-sell_amount: the amount of the token to sell, float, e.g. 100000
-buy_symbol: the symbol of the token to buy, string, e.g. 'WETH'
-buy_ID: the ID of the token to buy, string, e.g. '0xc02
+- sell_symbol: the symbol of the token to sell, string, e.g. 'USDC'
+- sell_ID: the ID of the token to sell, string, e.g. '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+- sell_amount: the amount of the token to sell, float, e.g. 100000
+- buy_symbol: the symbol of the token to buy, string, e.g. 'WETH'
+- buy_ID: the ID of the token to buy, string, e.g. '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
 
 OUTPUTS:
 result: a dictionary containing the pool graph, path graph, and routes
 - pool_graph: a dictionary of lists mapping each node to its neighbors
 - path_graph: a dictionary of lists mapping each node to its neighbors
-- routes: a list of routes, each route is a list of swaps
+- routes: a dictionary of routes, each route contains the input amount, output amount, price, gas fee, and the nodes in the route
+    - each route also has a key for each swap in the route, each swap contains:
+    - the pool, input token, input amount, output token, output amount, price impact, price, gas fee, and description
 
-see example.ipynb for example outputs
+see example.ipynb for example outputs, or swagger.yaml for the structure of the output
 
 sample queries (when running locally):
 100,000 USDC for WETH

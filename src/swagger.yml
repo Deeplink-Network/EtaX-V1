@@ -1,0 +1,52 @@
+swagger: "2.0"
+
+info:
+  title: Order Router
+  version: 1.0.0
+
+paths:
+  /order_router:
+    get:
+      description: Route an order
+      operationId: order_router
+      parameters:
+        - in: query
+          name: sell_symbol
+          type: string
+          required: true
+          description: The symbol of the token to sell
+        - in: query
+          name: sell_ID
+          type: string
+          required: true
+          description: The ID of the token to sell
+        - in: query
+          name: sell_amount
+          type: number
+          required: true
+          description: The amount of the token to sell
+        - in: query
+          name: buy_symbol
+          type: string
+          required: true
+          description: The symbol of the token to buy
+        - in: query
+          name: buy_ID
+          type: string
+          required: true
+          description: The ID of the token to buy
+      responses:
+        200:
+          description: Success
+          schema:
+            type: object
+            properties:
+              pool_graph:
+                type: object
+                description: A dictionary of lists mapping each node to its neighbors
+              path_graph:
+                type: object
+                description: A dictionary of lists mapping each node to its neighbors
+              routes:
+                type: object
+                description: A dictionary of routes, each route contains the input amount, output amount, price, gas fee, and the nodes in the route. Each route also has a key for each swap in the route, each swap contains the pool, input token, input amount, output token, output amount, price impact, price, gas fee, and description

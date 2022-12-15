@@ -9,7 +9,7 @@ import sys
 import json
 
 # open the tokens file, a list of the top 1000 tokens by totalVolumeUSD as of 13.12.2022
-with open(r'src\data\uniswap_v2_tokens.json') as f:
+with open(r'data/uniswap_v2_tokens.json') as f:
     TOKENS = json.load(f)
 
 ENDPOINT = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2"

@@ -7,7 +7,7 @@ from web3 import Web3
 import dotenv
 
 # use a .env file to store and retrieve your infura key
-INFURA_KEY = dotenv.get_key("src/.env", "INFURA_KEY")
+INFURA_KEY = dotenv.get_key(".env", "INFURA_KEY")
 # this is the current minimum gas required for a transaction on the Ethereum mainnet, but may change in the future
 MINIMUM_GAS = 21_000
 

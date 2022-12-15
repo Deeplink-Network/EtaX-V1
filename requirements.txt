@@ -2,3 +2,4 @@ Flask
 web3
 networkx
 matplotlib
+flask-swagger
