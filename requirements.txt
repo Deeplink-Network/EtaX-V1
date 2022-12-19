@@ -1,5 +1,6 @@
-Flask
-web3
+aiohttp
 networkx
 matplotlib
-flask-swagger
+web3
+python-dotenv
+Flask[async]
