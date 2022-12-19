@@ -13,7 +13,7 @@ from asyncio import Queue
 app = Flask(__name__)
 
 # define the maximum number of concurrent requests
-MAX_CONCURRENT_REQUESTS = 10
+MAX_CONCURRENT_REQUESTS = 2
 
 # create a queue to store the incoming requests
 request_queue = Queue(maxsize=MAX_CONCURRENT_REQUESTS)
@@ -60,11 +60,13 @@ async def order_router():
     # create a task to run the coroutine
     task = asyncio.create_task(route_orders(sell_symbol, sell_ID, sell_amount, buy_symbol, buy_ID))
     # add the task to the queue
-    request_queue.put_nowait(task)
+    request_queue.put(task)
+
     # wait for the task to complete
     result = await task
-    # return the result as a JSON response
+    # return the result to the client
     return jsonify(result)
+
 
 # run the Flask app
 if __name__ == '__main__':
