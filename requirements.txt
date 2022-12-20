@@ -4,3 +4,4 @@ matplotlib
 web3
 python-dotenv
 Flask[async]
+Flask-Cors
