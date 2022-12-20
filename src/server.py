@@ -7,13 +7,15 @@ from smart_order_router import route_orders
 
 # third party imports
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import asyncio
 from asyncio import Queue
 
 app = Flask(__name__)
+CORS(app)
 
 # define the maximum number of concurrent requests
-MAX_CONCURRENT_REQUESTS = 2
+MAX_CONCURRENT_REQUESTS = 10
 
 # create a queue to store the incoming requests
 request_queue = Queue(maxsize=MAX_CONCURRENT_REQUESTS)
