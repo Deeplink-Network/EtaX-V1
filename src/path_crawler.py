@@ -83,5 +83,5 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
             continue 
         
     # sort routes by amount out
-    routes = dict(sorted(routes.items(), key=lambda item: item[1]['amount_out'], reverse=True))
+    routes = sorted(routes.items(), key=lambda item: item[1]['amount_out'], reverse=True)
     return routes
