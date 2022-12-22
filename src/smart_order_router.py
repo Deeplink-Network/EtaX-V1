@@ -4,8 +4,8 @@ This module contains the main function for the smart order router, calling all t
 
 # local imports
 from pool_collector import get_pool_permutations
-from graph_constructor import construct_pool_graph
-from pathfinder import find_shortest_paths, validate_all_paths, create_path_graph
+from graph_constructor import construct_pool_graph, pool_graph_to_dict
+from pathfinder import find_shortest_paths, validate_all_paths, create_path_graph, path_graph_to_dict
 from path_crawler import calculate_routes
 # third party imports
 import networkx as nx
@@ -18,7 +18,7 @@ async def route_orders(sell_symbol: str, sell_ID: str, sell_amount: float, buy_s
     # construct the pool graph
     G = construct_pool_graph(pools)
     # get the graph dict
-    graph_dict = nx.to_dict_of_dicts(G)
+    graph_dict = pool_graph_to_dict(G)
     # append the dict to the result
     result['pool_graph'] = graph_dict
     # find the shortest paths
@@ -28,7 +28,7 @@ async def route_orders(sell_symbol: str, sell_ID: str, sell_amount: float, buy_s
     # create the path graph
     path_graph = create_path_graph(valid_paths)
     # get the path graph dict
-    path_graph_dict = nx.to_dict_of_dicts(path_graph)
+    path_graph_dict = path_graph_to_dict(path_graph)
     # append the dict to the result
     result['path_graph'] = path_graph_dict
     # calculate the routes (traverse the paths and calculate price impact at each swap)
