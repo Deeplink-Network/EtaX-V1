@@ -47,7 +47,8 @@ def check_path_validity(path: list, sell_symbol: str, buy_symbol: str) -> bool:
             output_token = get_partner_symbol(node, sell_symbol)
         # for the other nodes
         else:
-            if output_token not in node:
+            # check if output_token is exactly one of the tokens in the node
+            if output_token not in node.split('_'):
                 return False 
             output_token = get_partner_symbol(node, output_token)
         # for the last node
