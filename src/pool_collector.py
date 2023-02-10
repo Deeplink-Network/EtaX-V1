@@ -131,30 +131,52 @@ async def get_top_pools_token1(symbol_A: str, ID_A: str, symbol_B: str, ID_B: st
         except KeyError:
             continue
 
-async def get_latest_pool_data(X: int=1000, skip: int=0) -> dict:
+async def get_latest_pool_data(X: int=1000, skip: int=0, max_reserves=None) -> dict:
     while True:
         try:
-            query = f"""
-            {{
-            pairs(first: {X}, orderBy: reserveUSD, orderDirection: desc, skip: {skip}) {{
-                id
-                reserveUSD
-                reserve0
-                reserve1
-                token0Price
-                token1Price
-                token0 {{
+            if not max_reserves:
+
+                query = f"""
+                {{
+                pairs(first: {X}, orderBy: reserveUSD, orderDirection: desc, skip: {skip}) {{
                     id
-                    symbol
+                    reserveUSD
+                    reserve0
+                    reserve1
+                    token0Price
+                    token1Price
+                    token0 {{
+                        id
+                        symbol
+                    }}
+                    token1 {{
+                        id
+                        symbol
+                    }}
+                    }}
                 }}
-                token1 {{
+                """
+            else:
+                query = f"""
+                {{
+                pairs(first: {X}, orderBy: reserveUSD, orderDirection: desc, skip: {skip}, where: {{reserveUSD_lt: {max_reserves}}}) {{
                     id
-                    symbol
+                    reserveUSD
+                    reserve0
+                    reserve1
+                    token0Price
+                    token1Price
+                    token0 {{
+                        id
+                        symbol
+                    }}
+                    token1 {{
+                        id
+                        symbol
+                    }}
+                    }}
                 }}
-                }}
-            }}
-            """
-            
+                """
             async with aiohttp.ClientSession() as session:
                 async with session.post(ENDPOINT, json={'query': query}) as response:
                     obj = await response.json()
