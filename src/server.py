@@ -22,7 +22,7 @@ CORS(app)
 MAX_CONCURRENT_REQUESTS = 10
 
 # create a queue to store the incoming requests
-request_queue = Queue(maxsize=MAX_CONCURRENT_REQUESTS)
+# request_queue = Queue(maxsize=MAX_CONCURRENT_REQUESTS)
 # create the event loop
 loop = asyncio.get_event_loop()
     
@@ -65,12 +65,13 @@ async def order_router():
     buy_ID = str(request.args.get('buy_ID'))
 
     # create a task to run the coroutine
-    task = asyncio.create_task(route_orders(sell_symbol, sell_ID, sell_amount, buy_symbol, buy_ID))
+    # task = asyncio.create_task(route_orders(sell_symbol, sell_ID, sell_amount, buy_symbol, buy_ID))
+    result = await route_orders(sell_symbol, sell_ID, sell_amount, buy_symbol, buy_ID)
     # add the task to the queue
-    await request_queue.put(task)
+    #await request_queue.put(task)
 
     # wait for the task to complete
-    result = await task
+    
     # return the result to the client
     return jsonify(result)
 
