@@ -3,20 +3,55 @@ This module contains the main function for the smart order router, calling all t
 '''
 
 # local imports
-from pool_collector import get_pool_permutations
+from pool_collector import get_latest_pool_data, get_pool_permutations
+import asyncio
 from graph_constructor import construct_pool_graph, pool_graph_to_dict
 from pathfinder import find_shortest_paths, validate_all_paths, create_path_graph, path_graph_to_dict
 from path_crawler import calculate_routes
 # third party imports
 import networkx as nx
 import json
+import sys
+
+pools = []
+
+async def refresh_pools():
+    global pools
+    # get the latest pool data
+    new_pools = []
+    for skip in (0, 1000, 2000, 3000, 4000, 5000):
+        new_pools += await get_latest_pool_data(skip=skip)
+    pools = new_pools
+        # await asyncio.sleep(5)
+
+def filter_pools(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, X: int = 50) -> list:
+    filtered_pools = []
+    sell_count = 0
+    buy_count = 0
+    for pool in pools:
+        if sell_symbol in (pool['token0']['symbol'], pool['token1']):
+            sell_count += 1
+            if sell_count < X:
+                filtered_pools.append(pool)
+                continue
+        if buy_symbol in (pool['token0']['symbol'], pool['token1']):
+            buy_count += 1
+            if buy_count < X:
+                filtered_pools.append(pool)
+                continue
+    if buy_count == 0 or sell_count == 0:
+        return []
+    return filtered_pools
 
 async def route_orders(sell_symbol: str, sell_ID: str, sell_amount: float, buy_symbol: str, buy_ID: str) -> dict:
     result = {}
     # get the pools
-    pools = await get_pool_permutations(sell_symbol, sell_ID, buy_symbol, buy_ID)
+    # pools = await get_pool_permutations(sell_symbol, sell_ID, buy_symbol, buy_ID)
     # construct the pool graph
-    G = construct_pool_graph(pools)
+    filt_pools = filter_pools(sell_symbol, sell_ID, buy_symbol, buy_ID)
+    if len(filt_pools) < 60:
+        filt_pools = await get_pool_permutations(sell_symbol, sell_ID, buy_symbol, buy_ID)
+    G = construct_pool_graph(filt_pools)
     # get the graph dict
     graph_dict = pool_graph_to_dict(G)
     # append the dict to the result
