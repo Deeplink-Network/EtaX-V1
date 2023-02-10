@@ -3,13 +3,17 @@ This file contains the code for the Flask server that will be used to route orde
 '''
 
 # local imports
-from smart_order_router import route_orders
+from smart_order_router import route_orders, refresh_pools
+from threading import Thread
+from multiprocessing import Process
 
 # third party imports
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import asyncio
 from asyncio import Queue
+import requests
+import time
 
 app = Flask(__name__)
 CORS(app)
@@ -21,6 +25,7 @@ MAX_CONCURRENT_REQUESTS = 10
 request_queue = Queue(maxsize=MAX_CONCURRENT_REQUESTS)
 # create the event loop
 loop = asyncio.get_event_loop()
+    
 
 '''
 INPUTS:
@@ -62,14 +67,36 @@ async def order_router():
     # create a task to run the coroutine
     task = asyncio.create_task(route_orders(sell_symbol, sell_ID, sell_amount, buy_symbol, buy_ID))
     # add the task to the queue
-    request_queue.put(task)
+    await request_queue.put(task)
 
     # wait for the task to complete
     result = await task
     # return the result to the client
     return jsonify(result)
 
+@app.route('/refresh_pools', methods=['GET'])
+async def refresh_pools_req():
+    await refresh_pools()
+    return 'OK'
+
+def query_refresh():
+    time.sleep(5)
+    requests.get('http://localhost:5000/refresh_pools')
+
+async def start_background_loop(loop):
+    asyncio.set_event_loop(loop)
+    loop.run_forever()
+
+async def refresh_task():
+    while True:
+        await refresh_pools()
+        await asyncio.sleep(30)
+
+async def main():
+    process = Process(target=query_refresh)
+    process.start()
+    app.run()
 
 # run the Flask app
 if __name__ == '__main__':
-    app.run()
+    asyncio.run(main())

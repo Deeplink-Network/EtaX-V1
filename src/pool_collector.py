@@ -131,6 +131,42 @@ async def get_top_pools_token1(symbol_A: str, ID_A: str, symbol_B: str, ID_B: st
         except KeyError:
             continue
 
+async def get_latest_pool_data(X: int=1000, skip: int=0) -> dict:
+    while True:
+        try:
+            query = f"""
+            {{
+            pairs(first: {X}, orderBy: reserveUSD, orderDirection: desc, skip: {skip}) {{
+                id
+                reserveUSD
+                reserve0
+                reserve1
+                token0Price
+                token1Price
+                token0 {{
+                    id
+                    symbol
+                }}
+                token1 {{
+                    id
+                    symbol
+                }}
+                }}
+            }}
+            """
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.post(ENDPOINT, json={'query': query}) as response:
+                    obj = await response.json()
+                    pools = obj['data']['pairs']
+                    for pool in pools:
+                        pool['protocol'] = 'Uniswap V2'
+                    return pools
+        
+        # this sometimes fails but works on the next try, retry until it works
+        except KeyError:
+            continue
+
 # get the top X pools by reserveUSD where token0 != symbol_A and token1 != symbol_B
 async def get_pool_permutations(symbol_A: str, ID_A: str, symbol_B: str, ID_B: str, X: int=100) -> dict:
     # if the ID is not provided, find it
@@ -168,6 +204,8 @@ async def get_pool_permutations(symbol_A: str, ID_A: str, symbol_B: str, ID_B: s
         # this sometimes fails but works on the next try, retry until it works
         except KeyError:
             continue
+
+
 
 # main can be called from another file as follows:
 # from pool_collector import get_pool_permutations

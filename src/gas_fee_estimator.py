@@ -5,9 +5,12 @@ This script estimates the gas fee for a transaction on the Ethereum mainnet.
 # third party imports
 from web3 import Web3
 import dotenv
+from requests.auth import HTTPBasicAuth
 
 # use a .env file to store and retrieve your infura key
-INFURA_KEY = dotenv.get_key(".env", "INFURA_KEY")
+secrets = dotenv.dotenv_values(".env")
+INFURA_KEY = secrets.get("INFURA_KEY")
+INFURA_SECRET = secrets.get("INFURA_SECRET", None)
 # this is the current minimum gas required for a transaction on the Ethereum mainnet, but may change in the future
 MINIMUM_GAS = 21_000
 
@@ -15,7 +18,10 @@ MINIMUM_GAS = 21_000
 def get_gas_price() -> float:
     # connect to the Ethereum mainnet
     # put your own infura node here
-    w3 = Web3(Web3.HTTPProvider(f"https://mainnet.infura.io/v3/{INFURA_KEY}"))
+    if INFURA_SECRET:
+        w3 = Web3(Web3.HTTPProvider(f"https://mainnet.infura.io/v3/{INFURA_KEY}", request_kwargs={'auth': HTTPBasicAuth('', INFURA_SECRET)}))
+    else:
+        w3 = Web3(Web3.HTTPProvider(f"https://mainnet.infura.io/v3/{INFURA_KEY}"))
     # get the gas price
     gas_price = w3.eth.gasPrice
     # convert the gas price to gwei
