@@ -4,6 +4,9 @@ info:
   title: Order Router
   version: 1.0.0
 
+servers:
+ - url: https://etax.au.ngrok.io
+
 paths:
   /order_router:
     get:
