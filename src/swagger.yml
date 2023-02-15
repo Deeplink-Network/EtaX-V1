@@ -5,7 +5,8 @@ info:
   version: 1.0.0
 
 servers:
- - url: https://etax.au.ngrok.io
+  - url: https://etax.au.ngrok.io
+  - description: Main server
 
 paths:
   /order_router:
