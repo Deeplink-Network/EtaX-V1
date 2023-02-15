@@ -81,8 +81,9 @@ async def refresh_pools_req():
     return 'OK'
 
 def query_refresh():
-    time.sleep(5)
-    requests.get('http://localhost:5000/refresh_pools')
+    while True:
+        time.sleep(5)
+        requests.get('http://localhost:5000/refresh_pools')
 
 async def start_background_loop(loop):
     asyncio.set_event_loop(loop)

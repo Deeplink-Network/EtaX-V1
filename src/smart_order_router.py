@@ -12,8 +12,9 @@ from path_crawler import calculate_routes
 import networkx as nx
 import json
 import sys
+import logging
 
-pools = [None] * 100_000
+pools = [None] * 200_000
 
 async def refresh_pools():
     global pools
@@ -22,7 +23,7 @@ async def refresh_pools():
     last_pool_reserves = None
     for i in range(0, 30):
         for skip in (0, 1000, 2000, 3000, 4000, 5000):
-            print(i, skip)
+            logging.info(f'getting pools {i*6000 + skip} to {i*6000 + skip + 1000}...')
             new_pools = await get_latest_pool_data(skip=skip, max_reserves=last_pool_reserves)
             if new_pools:
                 pools[i*6000 + skip: i*6000 + skip + len(new_pools)] = new_pools
@@ -38,21 +39,21 @@ def filter_pools(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, X
     min_count = 10
     for i, pool in enumerate(pools):
         if not pool:
-            print(i)
+            logging.info("Didn't reach the max number of pools for the graph")
             return filtered_pools
         if sell_count >= X and buy_count >= X:
             return filtered_pools
         if sell_symbol in (pool['token0']['symbol'], pool['token1']['symbol']):
             sell_count += 1
-            if sell_count < X:
+            if sell_count < X and pool not in filtered_pools:
                 filtered_pools.append(pool)
-                continue
         if buy_symbol in (pool['token0']['symbol'], pool['token1']['symbol']):
             buy_count += 1
-            if buy_count < X:
+            if buy_count < X and pool not in filtered_pools:
                 filtered_pools.append(pool)
-                continue
     if buy_count < min_count or sell_count < min_count:
+        logging.warning('Insufficient pools cached, using old method')
+        logging.warning(f'Final buy count: {buy_count}, final sell count: {sell_count}')
         return []
     return filtered_pools
 
