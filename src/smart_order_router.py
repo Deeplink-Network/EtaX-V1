@@ -14,6 +14,10 @@ import json
 import sys
 import logging
 
+BLACKLISTED_TOKENS = [
+    '0xd233d1f6fd11640081abb8db125f722b5dc729dc' # Dollar Protocol
+    ]
+
 pools = [None] * 200_000
 
 async def refresh_pools():
@@ -57,12 +61,77 @@ def filter_pools(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, X
         return []
     return filtered_pools
 
+# rewrite filter pools to use id instead of symbol
+def filter_pools_by_id(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, X: int = 50) -> list:
+    filtered_pools = []
+    sell_count = 0
+    buy_count = 0
+    min_count = 10
+    for i, pool in enumerate(pools):
+        if not pool:
+            print(i)
+            return filtered_pools
+        if sell_count >= X and buy_count >= X:
+            return filtered_pools
+        if sell_ID in (pool['token0']['id'], pool['token1']['id']):
+            # check if either token is blacklisted
+            if pool['token0']['id'] in BLACKLISTED_TOKENS or pool['token1']['id'] in BLACKLISTED_TOKENS:
+                continue
+            sell_count += 1
+            if sell_count < X and pool not in filtered_pools:
+                filtered_pools.append(pool)
+                continue
+        if buy_ID in (pool['token0']['id'], pool['token1']['id']):
+            # check if either token is blacklisted
+            if pool['token0']['id'] in BLACKLISTED_TOKENS or pool['token1']['id'] in BLACKLISTED_TOKENS:
+                continue
+            buy_count += 1
+            if buy_count < X and pool not in filtered_pools:
+                filtered_pools.append(pool)
+    if buy_count < min_count or sell_count < min_count:
+        logging.warning('Insufficient pools cached, using old method')
+        logging.warning(f'Final buy count: {buy_count}, final sell count: {sell_count}')
+        return []
+    return filtered_pools
+
+# rewrite filter pools to use id instead of symbol
+def filter_pools_by_id(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, X: int = 50) -> list:
+    filtered_pools = []
+    sell_count = 0
+    buy_count = 0
+    min_count = 10
+    for i, pool in enumerate(pools):
+        if not pool:
+            print(i)
+            return filtered_pools
+        if sell_count >= X and buy_count >= X:
+            return filtered_pools
+        if sell_ID in (pool['token0']['id'], pool['token1']['id']):
+            # check if either token is blacklisted
+            if pool['token0']['id'] in BLACKLISTED_TOKENS or pool['token1']['id'] in BLACKLISTED_TOKENS:
+                continue
+            sell_count += 1
+            if sell_count < X:
+                filtered_pools.append(pool)
+                continue
+        if buy_ID in (pool['token0']['id'], pool['token1']['id']):
+            # check if either token is blacklisted
+            if pool['token0']['id'] in BLACKLISTED_TOKENS or pool['token1']['id'] in BLACKLISTED_TOKENS:
+                continue
+            buy_count += 1
+            if buy_count < X:
+                filtered_pools.append(pool)
+                continue
+    if buy_count < min_count or sell_count < min_count:
+        return []
+    return filtered_pools
+
 async def route_orders(sell_symbol: str, sell_ID: str, sell_amount: float, buy_symbol: str, buy_ID: str) -> dict:
     result = {}
     # get the pools
     # pools = await get_pool_permutations(sell_symbol, sell_ID, buy_symbol, buy_ID)
     # construct the pool graph
-    filt_pools = filter_pools(sell_symbol, sell_ID, buy_symbol, buy_ID)
+    filt_pools = filter_pools_by_id(sell_symbol, sell_ID, buy_symbol, buy_ID)
     if len(filt_pools) < 25:
         filt_pools = await get_pool_permutations(sell_symbol, sell_ID, buy_symbol, buy_ID)
     G = construct_pool_graph(filt_pools)

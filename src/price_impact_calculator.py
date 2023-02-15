@@ -37,8 +37,7 @@ def xyk_price_impact(pool: dict, sell_symbol: str, sell_amount: str) -> dict:
     price_impact = (1-(actual_return/expected_return))*100
 
     description = f"""Sell {sell_amount} {sell_symbol} for {pool[f'token{buy_token}']['symbol']} in {pool['protocol']} {pool['id']}
-    \nExpected payout: {expected_return} {pool[f'token{buy_token}']['symbol']}
-    \nActual payout: {actual_return} {pool[f'token{buy_token}']['symbol']}
+    \nExpected return: {actual_return} {pool[f'token{buy_token}']['symbol']}
     \nPrice impact: {price_impact}%
     """
     

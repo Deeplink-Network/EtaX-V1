@@ -19,6 +19,7 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
         print(f'path {count}')
         try:
             swap_number = 0
+            price_impact_over_limit = False  # keep track if any swap has a price impact over 15%
             for pool in path:
                 print(f'swap {swap_number}')
                 if pool == path[0]:
@@ -30,6 +31,12 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
                     price_impact = values['price_impact']
                     description = values['description']
                     print(description)
+
+                    # skip the current route if any swap has a price impact over 15%
+                    if price_impact > 15:
+                        price_impact_over_limit = True
+                        break  
+
                     # add the route to the dictionary under the swap key
                     routes[f'route_{count}'] = {
                         f'swap_{swap_number}': {
@@ -55,6 +62,11 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
                     price_impact = values['price_impact']
                     description = values['description']
                     print(description)
+
+                    # skip the current route if any swap has a price impact over 15%
+                    if price_impact > 15:
+                        price_impact_over_limit = True
+                        break  
                     # add the route to the dictionary under the swap key
                     routes[f'route_{count}'][f'swap_{swap_number}'] = {
                         'pool': pool,
@@ -69,11 +81,17 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
                     }
                     swap_number += 1
 
-            # add the final price, total gas fee, and path to the dictionary
-            routes[f'route_{count}']['amount_in'] = sell_amount
-            routes[f'route_{count}']['amount_out'] = output_amount
+            if price_impact_over_limit:
+                # delete the route if any swap has a price impact over 15%
+                del routes[f'route_{count}']
+                
+            else:
+                # add the final price, total gas fee, and path to the dictionary
+                routes[f'route_{count}']['amount_in'] = sell_amount
+                routes[f'route_{count}']['amount_out'] = output_amount
+                
             routes[f'route_{count}']['price'] = sell_amount/output_amount
-            routes[f'route_{count}']['gas_fee'] = gas_fee
+            routes[f'route_{count}']['gas_fee'] = gas_fee*swap_number
             routes[f'route_{count}']['path'] = path
             count += 1
             print('------------------------------------------------------------')
