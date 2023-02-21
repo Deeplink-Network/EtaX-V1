@@ -35,8 +35,10 @@ async def refresh_pools(protocol: str):
             last_pool = new_pools[-1]
             if protocol == 'Uniswap V2':
                 last_pool_metric = float(last_pool['reserveUSD'])
+                print(f'last pool metric: {last_pool_metric}')
             elif protocol == 'Sushiswap V2':
                 last_pool_metric = float(last_pool['liquidityUSD'])    
+                print(f'last pool metric: {last_pool_metric}')
         # print the number of pools with protocol = SushiSwap V2 and Uniswap v2
         global sushicount
         global unicount
@@ -59,16 +61,26 @@ async def refresh_pools(protocol: str):
     # pools = new_pools
     # await asyncio.sleep(5)
 
+# a potentially faster way to flatten the dictionary to a list
+'''
+import itertools
+import multiprocessing
+
+def flatten_dict(pool_dict):
+    sub_dicts = (sub_dict for dict_data in pool_dict.values() for dict_id, sub_dict in dict_data.items())
+    with multiprocessing.Pool() as pool:
+        return list(itertools.chain.from_iterable(pool.imap_unordered(iter, sub_dicts, chunksize=1000)))
+
+flattened_list = flatten_dict(pool_dict)
+'''
+
 # filter the pools for the query
 def filter_pools(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, X: int = 50) -> list:
     filtered_pools = []
     sell_count = 0
     buy_count = 0
     min_count = 10
-    for i, pool in enumerate(pools):
-        if not pool:
-            print(i)
-            return filtered_pools
+    for pool in pool_dict.values():
         if sell_count >= X and buy_count >= X:
             return filtered_pools
         if sell_ID in (pool['token0']['id'], pool['token1']['id']):
@@ -78,7 +90,6 @@ def filter_pools(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, X
             sell_count += 1
             if sell_count < X and pool not in filtered_pools:
                 filtered_pools.append(pool)
-                continue
         if buy_ID in (pool['token0']['id'], pool['token1']['id']):
             # check if either token is blacklisted
             if pool['token0']['id'] in BLACKLISTED_TOKENS or pool['token1']['id'] in BLACKLISTED_TOKENS:
@@ -91,6 +102,8 @@ def filter_pools(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, X
         logging.warning(f'Final buy count: {buy_count}, final sell count: {sell_count}')
         return []
     return filtered_pools
+
+
 
 async def route_orders(sell_symbol: str, sell_ID: str, sell_amount: float, buy_symbol: str, buy_ID: str) -> dict:
     result = {}
