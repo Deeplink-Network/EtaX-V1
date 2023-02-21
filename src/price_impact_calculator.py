@@ -3,7 +3,7 @@ This script calculates the price impact of a swap in a given pool using the xyk 
 '''
 
 # calculate the predicted price impact percentage when swapping one token for another in a given pool
-def xyk_price_impact(pool: dict, sell_symbol: str, sell_amount: str) -> dict:
+def xyk_price_impact(pool: dict, sell_symbol: str, sell_amount: float) -> dict:
     # NOR check that sell_token is in the pool, do not proceed if it is not
     if sell_symbol not in [pool['token0']['symbol'], pool['token1']['symbol']]:
         print('Sell token not accepted by pool: '+pool['id'])
@@ -16,7 +16,7 @@ def xyk_price_impact(pool: dict, sell_symbol: str, sell_amount: str) -> dict:
     if pool['token1']['symbol'] == sell_symbol:
         sell_token = 1
         buy_token = 0
-    
+
     # grab the expected price of the asset being purchased
     expected_price = float(pool[f'token{sell_token}Price'])
     # calculated the expected return
@@ -25,6 +25,12 @@ def xyk_price_impact(pool: dict, sell_symbol: str, sell_amount: str) -> dict:
     # constant product formula (xyk)
     x = float(pool[f'reserve{sell_token}'])
     y = float(pool[f'reserve{buy_token}'])
+
+    # SushiSwap subgraph returns decimals adjusted values, so we need to adjust them back
+    if pool['protocol'] == 'SushiSwap V2':
+        x = x/10**int(pool[f'token{sell_token}']['decimals'])
+        y = y/10**int(pool[f'token{buy_token}']['decimals'])
+
     k = x*y
     
     # calculate new amount of buy_token in the pool after xyk adjustment
@@ -32,7 +38,7 @@ def xyk_price_impact(pool: dict, sell_symbol: str, sell_amount: str) -> dict:
     
     # calculate actual amount of buy_token received
     actual_return = y-y_new
-    
+
     # calculate price impact percentage
     price_impact = (1-(actual_return/expected_return))*100
 

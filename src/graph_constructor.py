@@ -17,10 +17,15 @@ def construct_pool_graph(pools: json) -> nx.classes.graph.Graph:
     for pool in pools:
         '''# if at least one of the pool's symbols are tokens A or B
         if pool['token0']['symbol'] == tokenA or pool['token0']['symbol'] == tokenB or pool['token1']['symbol'] == tokenA or pool['token1']['symbol'] == tokenB:'''
+        # check if the pool has reserveUSD or liquidityUSD
+        if 'reserveUSD' in pool:
+            metric = pool['reserveUSD'] 
+        elif 'liquidityUSD' in pool:
+            metric = pool['liquidityUSD']
         # make the node SYMBOL1_SYMBOL2_ID
         G.add_node(
             pool['token0']['symbol'] + '_' + pool['token1']['symbol'] + '_' + pool['id'], id=pool['id'], 
-            reserveUSD=pool['reserveUSD'],
+            metric=metric,
             token0=pool['token0'],
             token1=pool['token1'],
             reserve0=pool['reserve0'],
