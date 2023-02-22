@@ -136,7 +136,7 @@ async def get_top_pools_token1(symbol_A: str, ID_A: str, symbol_B: str, ID_B: st
         except KeyError:
             continue
 
-async def get_latest_pool_data(protocol: str, X: int=1000, skip: int=0, max_metric=None) -> dict:
+async def get_latest_pool_data(protocol: str, X: int=1000, skip: int=0, max_metric=float) -> dict:
     # check which endpoint to use, the schema for Uniswap V2 and Sushiswap V2 only differs by the liquidity and reserve metrics
     if protocol == 'Uniswap V2':
         endpoint = UNISWAPV2_ENDPOINT

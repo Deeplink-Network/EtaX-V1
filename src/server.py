@@ -3,8 +3,6 @@ from threading import Thread
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import asyncio
-import requests
-import time
 
 app = Flask(__name__)
 CORS(app)

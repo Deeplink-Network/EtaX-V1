@@ -21,7 +21,12 @@ unicount = 0
 
 async def refresh_pools(protocol: str):
     print('refreshing pools...')
+
+    global sushicount
+    global unicount
+
     global pools
+    global pool_dict 
     # get the latest pool data
     new_pools = []
     last_pool_metric = None
@@ -31,16 +36,19 @@ async def refresh_pools(protocol: str):
             new_pools = await get_latest_pool_data(protocol=protocol, skip=skip, max_metric=last_pool_metric)
             if new_pools:
                 pools[i*6000 + skip: i*6000 + skip + len(new_pools)] = new_pools
-        if new_pools:        
-            last_pool = new_pools[-1]
-            if protocol == 'Uniswap V2':
-                last_pool_metric = float(last_pool['reserveUSD'])
-                print(f'last pool metric: {last_pool_metric}')
-            elif protocol == 'Sushiswap V2':
-                last_pool_metric = float(last_pool['liquidityUSD'])    
-                print(f'last pool metric: {last_pool_metric}')
+                print(len(pool_dict))   
+                last_pool = new_pools[-1]
+                if protocol == 'Uniswap V2':
+                    last_pool_metric = float(last_pool['reserveUSD'])
+                    print(f'last pool metric: {last_pool_metric} reserveUSD')
+                elif protocol == 'Sushiswap V2':
+                    last_pool_metric = float(last_pool['liquidityUSD'])    
+                    print(f'last pool metric: {last_pool_metric} liquidityUSD')
+                for pool in new_pools:
+                    pool_dict[pool['id']] = pool
+
         # print the number of pools with protocol = SushiSwap V2 and Uniswap v2
-        global sushicount
+        '''global sushicount
         global unicount
         for pool in pools:
             # this is where the pools are mapped to their IDs
@@ -48,20 +56,17 @@ async def refresh_pools(protocol: str):
             # add the pool to the dictionary by mapping its id to the pool itself
             if pool: 
                 pool_dict[pool['id']] = pool
-            # this is just to check the number of pools with each protocol
-            if pool:
-                if pool['protocol'] == 'Uniswap V2':
+                if pool['protocol'] == 'Sushiswap V2':
                     sushicount += 1
-                elif pool['protocol'] == 'SushiSwap V2':
+                elif pool['protocol'] == 'Uniswap V2':
                     unicount += 1
-        print(f'Uniswap V2 pools: {unicount}')
-        print(f'Sushiswap V2 pools: {sushicount}')
-        print(f'Number of unique pools: {len(pool_dict)}')
-
+    print(f'number of pools with protocol = SushiSwap V2: {sushicount}')
+    print(f'number of pools with protocol = Uniswap V2: {unicount}')
+    print(f'number of unique pools: {len(pool_dict)}')'''
     # pools = new_pools
     # await asyncio.sleep(5)
 
-# a potentially faster way to flatten the dictionary to a list
+# potentially faster way to flatten the dictionary to a list
 '''
 import itertools
 import multiprocessing
@@ -75,11 +80,12 @@ flattened_list = flatten_dict(pool_dict)
 '''
 
 # filter the pools for the query
-def filter_pools(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, X: int = 50) -> list:
+def filter_pools(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, X: int = 100) -> list:
     filtered_pools = []
     sell_count = 0
     buy_count = 0
     min_count = 10
+
     for pool in pool_dict.values():
         if sell_count >= X and buy_count >= X:
             return filtered_pools
@@ -101,6 +107,9 @@ def filter_pools(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, X
         logging.warning('Insufficient pools cached, using old method')
         logging.warning(f'Final buy count: {buy_count}, final sell count: {sell_count}')
         return []
+    
+    print(f'sushi count: {sushicount}, uni count: {unicount}')
+
     return filtered_pools
 
 
