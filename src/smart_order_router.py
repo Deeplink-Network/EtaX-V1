@@ -6,9 +6,11 @@ This module contains the main function for the smart order router, calling all t
 from pool_collector import get_latest_pool_data, get_pool_permutations
 from graph_constructor import construct_pool_graph, pool_graph_to_dict
 from pathfinder import find_shortest_paths, validate_all_paths, create_path_graph, path_graph_to_dict
-from path_crawler import calculate_routes
+from path_crawler import calculate_routes, get_final_route
 # third party imports
 import logging
+
+MAX_ORDERS = 20
 
 BLACKLISTED_TOKENS = [
     '0xd233d1f6fd11640081abb8db125f722b5dc729dc' # Dollar Protocol
@@ -30,7 +32,7 @@ async def refresh_pools(protocol: str):
     # get the latest pool data
     new_pools = []
     last_pool_metric = None
-    for i in range(0, 30):
+    for i in range(0, 1):
         for skip in (0, 1000, 2000, 3000, 4000, 5000):
             logging.info(f'getting pools {i*6000 + skip} to {i*6000 + skip + 1000}...')
             new_pools = await get_latest_pool_data(protocol=protocol, skip=skip, max_metric=last_pool_metric)
@@ -139,8 +141,9 @@ async def route_orders(sell_symbol: str, sell_ID: str, sell_amount: float, buy_s
     result['path_graph'] = path_graph_dict
     # calculate the routes (traverse the paths and calculate price impact at each swap)
     routes = calculate_routes(G, valid_paths, sell_amount, sell_symbol, buy_symbol)
+    final_route = get_final_route(G, routes, sell_amount, sell_symbol)
     # append the routes to the result and return
-    result['routes'] = routes
+    result['route'] = final_route
     '''# save routes to file
     with open('routes.json', 'w') as f:
         json.dump(routes, f)'''

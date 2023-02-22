@@ -30,6 +30,7 @@ def construct_pool_graph(pools: json) -> nx.classes.graph.Graph:
             token1=pool['token1'],
             reserve0=pool['reserve0'],
             reserve1=pool['reserve1'],
+            price_impact=0,
             pool=pool)
 
     # connect the nodes if they share a token
