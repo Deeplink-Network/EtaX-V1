@@ -43,6 +43,8 @@ paths:
         - in: query
           name: exchanges
           type: array
+          items:
+            type: string
           required: false
           description: The exchanges to include in the route. Defaults to all if not provided.
       responses:
@@ -94,6 +96,8 @@ paths:
         - in: query
           name: exchanges
           type: array
+          items:
+            type: string
           required: false
           description: The exchanges to include in the route. Defaults to all if not provided.
       responses:
