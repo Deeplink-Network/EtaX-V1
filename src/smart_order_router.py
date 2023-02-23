@@ -10,6 +10,7 @@ from path_crawler import calculate_routes, get_final_route
 # third party imports
 import logging
 from heapq import merge
+import json
 
 MAX_ORDERS = 20
 
@@ -102,7 +103,9 @@ def filter_pools(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, e
                        ['pools'], reverse=True, key=lambda x: float(x[pools[x['protocol']]['metric']]) if x else 0)
     sell_count = 0
     buy_count = 0
-    min_count = 10
+    min_count = 1
+
+    print(type(full_pools))
 
     for pool in full_pools:
         if not pool or exchanges is not None and pool['protocol'] not in exchanges:
