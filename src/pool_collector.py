@@ -138,15 +138,15 @@ async def get_top_pools_token1(symbol_A: str, ID_A: str, symbol_B: str, ID_B: st
 
 async def get_latest_pool_data(protocol: str, X: int=1000, skip: int=0, max_metric=float) -> dict:
     # check which endpoint to use, the schema for Uniswap V2 and Sushiswap V2 only differs by the liquidity and reserve metrics
-    if protocol == 'Uniswap V2':
+    if protocol == 'Uniswap_V2':
         endpoint = UNISWAPV2_ENDPOINT
         orderBy = 'reserveUSD'
         print('collecting data from Uniswap V2...')
 
-    elif protocol == 'SushiSwap V2':
+    elif protocol == 'Sushiswap_V2':
         endpoint = SUSHISWAPV2_ENDPOINT
         orderBy = 'liquidityUSD'
-        print('collecting data from SushiSwap V2...')
+        print('collecting data from Sushiswap V2...')
 
 
     while True:
@@ -207,10 +207,10 @@ async def get_latest_pool_data(protocol: str, X: int=1000, skip: int=0, max_metr
 
                     # assign protocol name to each pool
                     for pool in pools:
-                        if protocol == 'Uniswap V2':
-                            pool['protocol'] = 'Uniswap V2'
-                        elif protocol == 'SushiSwap V2':
-                            pool['protocol'] = 'SushiSwap V2'
+                        if protocol == 'Uniswap_V2':
+                            pool['protocol'] = 'Uniswap_V2'
+                        elif protocol == 'Sushiswap_V2':
+                            pool['protocol'] = 'Sushiswap_V2'
 
                     # print(query)
                     # print(pools)
@@ -245,7 +245,7 @@ async def get_pool_permutations(symbol_A: str, ID_A: str, symbol_B: str, ID_B: s
             pools = sorted(pools, key=lambda x: x['reserveUSD'], reverse=True)
             # add 'protocol': 'Uniswap V2' to each pool
             for pool in pools:
-                pool['protocol'] = 'Uniswap V2'
+                pool['protocol'] = 'Uniswap_V2'
             '''# save the pools as a json file to /data
             # sort symbol_A and symbol_B alphabetically and use them as the file name
             if symbol_A < symbol_B:
