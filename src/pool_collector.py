@@ -12,7 +12,11 @@ import json
 with open(r'data/uniswap_v2_tokens.json') as f:
     TOKENS = json.load(f)
 
+# keeping this here for redundant fallback method, can remove later
 ENDPOINT = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2"
+
+UNISWAPV2_ENDPOINT = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2"
+SUSHISWAPV2_ENDPOINT = "https://api.thegraph.com/subgraphs/name/sushi-v2/sushiswap-ethereum"
 
 # get the top X pools by reserveUSD where token0 = tokenA and token1 = tokenB
 async def get_top_pools_token0_token1(symbol_A: str, ID_A: str, symbol_B: str, ID_B: str, X: int) -> dict:
@@ -20,6 +24,7 @@ async def get_top_pools_token0_token1(symbol_A: str, ID_A: str, symbol_B: str, I
     if ID_A == None or ID_B == None:
         ID_A = next((token['id'] for token in TOKENS if token['symbol'] == symbol_A), None)
         ID_B = next((token['id'] for token in TOKENS if token['symbol'] == symbol_B), None)
+        
     while True:
         try:
             query = f"""
@@ -131,16 +136,28 @@ async def get_top_pools_token1(symbol_A: str, ID_A: str, symbol_B: str, ID_B: st
         except KeyError:
             continue
 
-async def get_latest_pool_data(X: int=1000, skip: int=0, max_reserves=None) -> dict:
+async def get_latest_pool_data(protocol: str, X: int=1000, skip: int=0, max_metric=float) -> dict:
+    # check which endpoint to use, the schema for Uniswap V2 and Sushiswap V2 only differs by the liquidity and reserve metrics
+    if protocol == 'Uniswap_V2':
+        endpoint = UNISWAPV2_ENDPOINT
+        orderBy = 'reserveUSD'
+        print('collecting data from Uniswap V2...')
+
+    elif protocol == 'Sushiswap_V2':
+        endpoint = SUSHISWAPV2_ENDPOINT
+        orderBy = 'liquidityUSD'
+        print('collecting data from Sushiswap V2...')
+
+
     while True:
         try:
-            if not max_reserves:
+            if not max_metric:
 
                 query = f"""
                 {{
-                pairs(first: {X}, orderBy: reserveUSD, orderDirection: desc, skip: {skip}) {{
+                pairs(first: {X}, orderBy: {orderBy}, orderDirection: desc, skip: {skip}) {{
                     id
-                    reserveUSD
+                    {orderBy}
                     reserve0
                     reserve1
                     token0Price
@@ -148,20 +165,23 @@ async def get_latest_pool_data(X: int=1000, skip: int=0, max_reserves=None) -> d
                     token0 {{
                         id
                         symbol
+                        decimals
                     }}
                     token1 {{
                         id
                         symbol
+                        decimals
                     }}
                     }}
                 }}
                 """
+
             else:
                 query = f"""
                 {{
-                pairs(first: {X}, orderBy: reserveUSD, orderDirection: desc, skip: {skip}, where: {{reserveUSD_lt: {max_reserves}}}) {{
+                pairs(first: {X}, orderBy: {orderBy}, orderDirection: desc, skip: {skip}, where: {{{orderBy}_lt: {max_metric}}}) {{
                     id
-                    reserveUSD
+                    {orderBy}
                     reserve0
                     reserve1
                     token0Price
@@ -169,24 +189,36 @@ async def get_latest_pool_data(X: int=1000, skip: int=0, max_reserves=None) -> d
                     token0 {{
                         id
                         symbol
+                        decimals
                     }}
                     token1 {{
                         id
                         symbol
+                        decimals
                     }}
                     }}
                 }}
                 """
+
             async with aiohttp.ClientSession() as session:
-                async with session.post(ENDPOINT, json={'query': query}) as response:
+                async with session.post(endpoint, json={'query': query}) as response:
                     obj = await response.json()
                     pools = obj['data']['pairs']
+
+                    # assign protocol name to each pool
                     for pool in pools:
-                        pool['protocol'] = 'Uniswap V2'
+                        if protocol == 'Uniswap_V2':
+                            pool['protocol'] = 'Uniswap_V2'
+                        elif protocol == 'Sushiswap_V2':
+                            pool['protocol'] = 'Sushiswap_V2'
+
+                    # print(query)
+                    # print(pools)
                     return pools
         
         # this sometimes fails but works on the next try, retry until it works
-        except KeyError:
+        except KeyError as e:
+            print(e)
             continue
 
 # get the top X pools by reserveUSD where token0 != symbol_A and token1 != symbol_B
@@ -213,7 +245,7 @@ async def get_pool_permutations(symbol_A: str, ID_A: str, symbol_B: str, ID_B: s
             pools = sorted(pools, key=lambda x: x['reserveUSD'], reverse=True)
             # add 'protocol': 'Uniswap V2' to each pool
             for pool in pools:
-                pool['protocol'] = 'Uniswap V2'
+                pool['protocol'] = 'Uniswap_V2'
             '''# save the pools as a json file to /data
             # sort symbol_A and symbol_B alphabetically and use them as the file name
             if symbol_A < symbol_B:

@@ -40,6 +40,11 @@ paths:
           type: string
           required: true
           description: The ID of the token to buy
+        - in: query
+          name: exchanges
+          type: array
+          required: false
+          description: The exchanges to include in the route. Defaults to all if not provided.
       responses:
         200:
           description: Success
@@ -55,3 +60,54 @@ paths:
               routes:
                 type: object
                 description: A dictionary of routes, each route contains the input amount, output amount, price, gas fee, and the nodes in the route. Each route also has a key for each swap in the route, each swap contains the pool, input token, input amount, output token, output amount, price impact, price, gas fee, and description
+
+  /order_router_split:
+    get:
+      description: Route an order, allowing for multiple routes via order splitting
+      operationId: order_router_split
+      parameters:
+        - in: query
+          name: sell_symbol
+          type: string
+          required: true
+          description: The symbol of the token to sell
+        - in: query
+          name: sell_ID
+          type: string
+          required: true
+          description: The ID of the token to sell
+        - in: query
+          name: sell_amount
+          type: number
+          required: true
+          description: The amount of the token to sell
+        - in: query
+          name: buy_symbol
+          type: string
+          required: true
+          description: The symbol of the token to buy
+        - in: query
+          name: buy_ID
+          type: string
+          required: true
+          description: The ID of the token to buy
+        - in: query
+          name: exchanges
+          type: array
+          required: false
+          description: The exchanges to include in the route. Defaults to all if not provided.
+      responses:
+        200:
+          description: Success
+          schema:
+            type: object
+            properties:
+              pool_graph:
+                type: object
+                description: A dictionary of lists mapping each node to its neighbors
+              path_graph:
+                type: object
+                description: A dictionary of lists mapping each node to its neighbors
+              routes:
+                type: object
+                description: A dictionary of individual paths and metadata for the whole route, including the output amount, the overall price, the overall gas fee, and the average price impact. Each path contains the input amount, output amount, the percentage of how much the original order was sent to the path, the price, gas fee, and the nodes in the path. Each path also has a key for each swap in the path, each swap contains the pool, input token, input amount, output token, output amount, price impact, price, gas fee, and description

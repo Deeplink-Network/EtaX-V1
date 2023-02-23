@@ -19,7 +19,10 @@ def find_shortest_paths(G: nx.classes.digraph.DiGraph, sell_symbol: str, buy_sym
         # for each buy node
         for buy_node in buy_nodes:
             # get the shortest path from the sell node to the buy node
-            paths.append(list(nx.shortest_path(G, sell_node, buy_node)))
+            try:
+                paths.append(list(nx.shortest_path(G, sell_node, buy_node)))
+            except:
+                pass
     # sort the paths by length
     paths.sort(key=len)
     # return the paths
