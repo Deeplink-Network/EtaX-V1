@@ -106,7 +106,7 @@ def filter_pools(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, e
 
     for pool in full_pools:
         if not pool or exchanges is not None and pool['protocol'] not in exchanges:
-            print(f'Skipping {pool["protocol"]}')
+            # print(f'Skipping {pool["protocol"]}')
             continue
         if sell_count >= X and buy_count >= X:
             return filtered_pools
