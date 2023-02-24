@@ -9,14 +9,15 @@ from pathfinder import find_shortest_paths, validate_all_paths, create_path_grap
 from path_crawler import calculate_routes, get_final_route
 # third party imports
 import logging
+from constants import UNISWAP_V2, SUSHISWAP_V2
 from heapq import merge
 import json
 
 MAX_ORDERS = 20
 
 DEX_LIST = (
-    'Uniswap_V2',
-    'Sushiswap_V2'
+    UNISWAP_V2,
+    SUSHISWAP_V2
 )
 
 BLACKLISTED_TOKENS = [
@@ -27,7 +28,7 @@ pool_dict = {}
 # pools = [None] * 200_000
 pools = {
     exch: {
-        'metric': 'reserveUSD' if exch == 'Uniswap_V2' else 'liquidityUSD',
+        'metric': 'reserveUSD' if exch == UNISWAP_V2 else 'liquidityUSD',
         'pools': [None] * 10_000
     } for exch in DEX_LIST
 }
@@ -97,9 +98,9 @@ flattened_list = flatten_dict(pool_dict)
 # filter the pools for the query
 
 
-def filter_pools(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, exchanges=None, X: int = 100) -> list:
+def filter_pools(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, exchanges=None, X: int = 50) -> list:
     filtered_pools = []
-    full_pools = merge(pools['Uniswap_V2']['pools'], pools['Sushiswap_V2']
+    full_pools = merge(pools[UNISWAP_V2]['pools'], pools[SUSHISWAP_V2]
                        ['pools'], reverse=True, key=lambda x: float(x[pools[x['protocol']]['metric']]) if x else 0)
     sell_count = 0
     buy_count = 0

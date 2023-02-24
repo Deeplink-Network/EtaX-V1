@@ -3,6 +3,7 @@ This script calculates the price impact of a swap in a given pool using the xyk 
 '''
 # Max price impact for a path before the order is split
 import json
+from constants import SUSHISWAP_V2, UNISWAP_V2
 MAX_PRICE_IMPACT = 0.20
 
 # calculate the predicted price impact percentage when swapping one token for another in a given pool
@@ -32,7 +33,7 @@ def xyk_price_impact(pool: dict, sell_symbol: str, sell_amount: float) -> dict:
     y = float(pool[f'reserve{buy_token}'])
 
     # Sushiswap subgraph returns decimals adjusted values, so we need to adjust them back
-    if pool['protocol'] == 'Sushiswap_V2':
+    if pool['protocol'] == SUSHISWAP_V2:
         x = x/10**int(pool[f'token{sell_token}']['decimals'])
         y = y/10**int(pool[f'token{buy_token}']['decimals'])
 
@@ -92,7 +93,7 @@ def get_max_amount_for_impact_limit(g, path: dict):
         y = float(pool[f'reserve{buy_token_num}'])
 
         # Sushiswap subgraph returns decimals adjusted values, so we need to adjust them back
-        if pool['protocol'] == 'Sushiswap_V2':
+        if pool['protocol'] == SUSHISWAP_V2:
             x = x/10**int(pool[f'token{sell_token_num}']['decimals'])
             y = y/10**int(pool[f'token{buy_token_num}']['decimals'])
 

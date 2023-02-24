@@ -2,6 +2,8 @@
 This file contains the functions to get the top X pools for a given token pair.
 '''
 
+from constants import UNISWAP_V2, SUSHISWAP_V2
+
 # standard library imports
 import asyncio 
 import aiohttp
@@ -138,12 +140,12 @@ async def get_top_pools_token1(symbol_A: str, ID_A: str, symbol_B: str, ID_B: st
 
 async def get_latest_pool_data(protocol: str, X: int=1000, skip: int=0, max_metric=float) -> dict:
     # check which endpoint to use, the schema for Uniswap V2 and Sushiswap V2 only differs by the liquidity and reserve metrics
-    if protocol == 'Uniswap_V2':
+    if protocol == UNISWAP_V2:
         endpoint = UNISWAPV2_ENDPOINT
         orderBy = 'reserveUSD'
         print('collecting data from Uniswap V2...')
 
-    elif protocol == 'Sushiswap_V2':
+    elif protocol == SUSHISWAP_V2:
         endpoint = SUSHISWAPV2_ENDPOINT
         orderBy = 'liquidityUSD'
         print('collecting data from Sushiswap V2...')
@@ -207,10 +209,7 @@ async def get_latest_pool_data(protocol: str, X: int=1000, skip: int=0, max_metr
 
                     # assign protocol name to each pool
                     for pool in pools:
-                        if protocol == 'Uniswap_V2':
-                            pool['protocol'] = 'Uniswap_V2'
-                        elif protocol == 'Sushiswap_V2':
-                            pool['protocol'] = 'Sushiswap_V2'
+                        pool['protocol'] = protocol
 
                     # print(query)
                     # print(pools)
