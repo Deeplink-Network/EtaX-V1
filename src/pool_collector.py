@@ -5,7 +5,7 @@ This file contains the functions to get the top X pools for a given token pair.
 from constants import UNISWAP_V2, UNISWAP_V3, SUSHISWAP_V2
 
 # standard library imports
-import asyncio 
+import asyncio
 import aiohttp
 import sys
 import json
@@ -23,12 +23,16 @@ UNISWAPV3_ENDPOINT = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3
 SUSHISWAPV2_ENDPOINT = "https://api.thegraph.com/subgraphs/name/sushi-v2/sushiswap-ethereum"
 
 # get the top X pools by reserveUSD where token0 = tokenA and token1 = tokenB
+
+
 async def get_top_pools_token0_token1(symbol_A: str, ID_A: str, symbol_B: str, ID_B: str, X: int) -> dict:
     # if the ID is not provided, find it
     if ID_A == None or ID_B == None:
-        ID_A = next((token['id'] for token in TOKENS if token['symbol'] == symbol_A), None)
-        ID_B = next((token['id'] for token in TOKENS if token['symbol'] == symbol_B), None)
-        
+        ID_A = next((token['id']
+                    for token in TOKENS if token['symbol'] == symbol_A), None)
+        ID_B = next((token['id']
+                    for token in TOKENS if token['symbol'] == symbol_B), None)
+
     while True:
         try:
             query = f"""
@@ -51,23 +55,27 @@ async def get_top_pools_token0_token1(symbol_A: str, ID_A: str, symbol_B: str, I
                 }}
             }}
             """
-            
+
             async with aiohttp.ClientSession() as session:
                 async with session.post(ENDPOINT, json={'query': query}) as response:
                     obj = await response.json()
                     pools = obj['data']['pairs']
                     return pools
-        
+
         # this sometimes fails but works on the next try, retry until it works
         except KeyError:
             continue
 
 # get the top X pools by reserveUSD where token0 = tokenA and token1 != tokenB
+
+
 async def get_top_pools_token0(symbol_A: str, ID_A: str, symbol_B: str, ID_B: str, X: int) -> dict:
     # if the ID is not provided, find it
     if ID_A == None or ID_B == None:
-        ID_A = next((token['id'] for token in TOKENS if token['symbol'] == symbol_A), None)
-        ID_B = next((token['id'] for token in TOKENS if token['symbol'] == symbol_B), None)
+        ID_A = next((token['id']
+                    for token in TOKENS if token['symbol'] == symbol_A), None)
+        ID_B = next((token['id']
+                    for token in TOKENS if token['symbol'] == symbol_B), None)
     while True:
         try:
             query = f"""
@@ -90,23 +98,27 @@ async def get_top_pools_token0(symbol_A: str, ID_A: str, symbol_B: str, ID_B: st
                 }}
             }}
             """
-            
+
             async with aiohttp.ClientSession() as session:
                 async with session.post(ENDPOINT, json={'query': query}) as response:
                     obj = await response.json()
                     pools = obj['data']['pairs']
                     return pools
-        
+
         # this sometimes fails but works on the next try, retry until it works
         except KeyError:
             continue
 
-# get the top X pools by reserveUSD where token0 != tokenA and token1 = tokenB 
+# get the top X pools by reserveUSD where token0 != tokenA and token1 = tokenB
+
+
 async def get_top_pools_token1(symbol_A: str, ID_A: str, symbol_B: str, ID_B: str, X: int) -> dict:
     # if the ID is not provided, find it
     if ID_A == None or ID_B == None:
-        ID_A = next((token['id'] for token in TOKENS if token['symbol'] == symbol_A), None)
-        ID_B = next((token['id'] for token in TOKENS if token['symbol'] == symbol_B), None)
+        ID_A = next((token['id']
+                    for token in TOKENS if token['symbol'] == symbol_A), None)
+        ID_B = next((token['id']
+                    for token in TOKENS if token['symbol'] == symbol_B), None)
     while True:
         try:
             query = f"""
@@ -129,16 +141,17 @@ async def get_top_pools_token1(symbol_A: str, ID_A: str, symbol_B: str, ID_B: st
                 }}
             }}
             """
-            
+
             async with aiohttp.ClientSession() as session:
                 async with session.post(ENDPOINT, json={'query': query}) as response:
                     obj = await response.json()
                     pools = obj['data']['pairs']
                     return pools
-        
+
         # this sometimes fails but works on the next try, retry until it works
         except KeyError:
             continue
+
 
 def uniswap_v3_query(X: int, skip: int, max_metric: float):
     if not max_metric:
@@ -192,7 +205,8 @@ def uniswap_v3_query(X: int, skip: int, max_metric: float):
         }}
         """
 
-async def get_latest_pool_data(protocol: str, X: int=1000, skip: int=0, max_metric: float=None) -> dict:
+
+async def get_latest_pool_data(protocol: str, X: int = 1000, skip: int = 0, max_metric: float = None) -> dict:
     # check which endpoint to use, the schema for Uniswap V2 and Sushiswap V2 only differs by the liquidity and reserve metrics
     if protocol == UNISWAP_V2:
         endpoint = UNISWAPV2_ENDPOINT
@@ -205,7 +219,7 @@ async def get_latest_pool_data(protocol: str, X: int=1000, skip: int=0, max_metr
         orderBy = 'liquidityUSD'
         print('collecting data from Sushiswap V2...')
         data_field = 'pairs'
-    
+
     elif protocol == UNISWAP_V3:
         endpoint = UNISWAPV3_ENDPOINT
         print('collecting data from Uniswap V3...')
@@ -214,7 +228,7 @@ async def get_latest_pool_data(protocol: str, X: int=1000, skip: int=0, max_metr
     while True:
         try:
             if protocol == UNISWAP_V3:
-                    query = uniswap_v3_query(X, skip, max_metric)
+                query = uniswap_v3_query(X, skip, max_metric)
             else:
                 if not max_metric:
                     query = f"""
@@ -277,34 +291,49 @@ async def get_latest_pool_data(protocol: str, X: int=1000, skip: int=0, max_metr
                                 pool = {}
                                 continue
 
-                            sqrtprice = (float(pool['sqrtPrice']) ** 2) / (2 ** 192)
+                            sqrtPrice = float(pool['sqrtPrice']) / (2 ** 96)
+                            liquidity = int(pool['liquidity'])
 
-                            sqrtprice = sqrt(sqrtprice)
+                            reserve0raw = liquidity / sqrtPrice
+                            reserve1raw = liquidity * sqrtPrice
 
-                            pool['reserve0'] = int(pool['liquidity']) / float(pool['sqrtPrice']) / (2 ** 96)
-                            pool['reserve1'] = int(pool['liquidity'])  * float(pool['sqrtPrice']) / (2 ** 96)
+                            reserve0 = reserve0raw / (10 ** int(pool['token0']['decimals']))
+                            reserve1 = reserve1raw / (10 ** int(pool['token1']['decimals']))
+
+                            pool['reserve0'] = reserve0
+                            pool['reserve1'] = reserve1
+                            # print(
+                            #     f'Pool calculated reserves: {pool["reserve0"]} {pool["token0"]["symbol"]} and {pool["reserve1"]} {pool["token1"]["symbol"]}')
+                            # print(
+                            #     f'Pool tvl: {pool["totalValueLockedToken0"]} {pool["token0"]["symbol"]} and {pool["totalValueLockedToken1"]} {pool["token1"]["symbol"]}')
 
                     # print(query)
                     # print(pools)
                     return pools
-        
+
         # this sometimes fails but works on the next try, retry until it works
         except KeyError as e:
             print(e)
             continue
 
 # get the top X pools by reserveUSD where token0 != symbol_A and token1 != symbol_B
-async def get_pool_permutations(symbol_A: str, ID_A: str, symbol_B: str, ID_B: str, X: int=100) -> dict:
+
+
+async def get_pool_permutations(symbol_A: str, ID_A: str, symbol_B: str, ID_B: str, X: int = 100) -> dict:
     # if the ID is not provided, find it
     if ID_A == None or ID_B == None:
-        ID_A = next((token['id'] for token in TOKENS if token['symbol'] == symbol_A), None)
-        ID_B = next((token['id'] for token in TOKENS if token['symbol'] == symbol_B), None)
+        ID_A = next((token['id']
+                    for token in TOKENS if token['symbol'] == symbol_A), None)
+        ID_B = next((token['id']
+                    for token in TOKENS if token['symbol'] == symbol_B), None)
     while True:
         try:
             # get all permutations of the top X pools, divide by 6 so that we get roughly X pools in total
             tasks = [
-                get_top_pools_token0_token1(symbol_A, ID_A, symbol_B, ID_B, int(X/6)),
-                get_top_pools_token0_token1(symbol_B, ID_B, symbol_A, ID_A, int(X/6)),
+                get_top_pools_token0_token1(
+                    symbol_A, ID_A, symbol_B, ID_B, int(X/6)),
+                get_top_pools_token0_token1(
+                    symbol_B, ID_B, symbol_A, ID_A, int(X/6)),
                 get_top_pools_token0(symbol_A, ID_A, symbol_B, ID_B, int(X/6)),
                 get_top_pools_token1(symbol_A, ID_A, symbol_B, ID_B, int(X/6)),
                 get_top_pools_token0(symbol_B, ID_B, symbol_A, ID_A, int(X/6)),
@@ -332,7 +361,6 @@ async def get_pool_permutations(symbol_A: str, ID_A: str, symbol_B: str, ID_B: s
             continue
 
 
-
 # main can be called from another file as follows:
 # from pool_collector import get_pool_permutations
 # pools = asyncio.run(get_pool_permutations('USDC', None, 'DAI', None, 100))
@@ -347,5 +375,6 @@ async def main():
     print(pools)
 
 if __name__ == '__main__':
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy()) # only need this if running on windows
+    # only need this if running on windows
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     asyncio.run(main())

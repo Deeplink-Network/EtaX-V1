@@ -9,7 +9,7 @@ from pathfinder import find_shortest_paths, validate_all_paths, create_path_grap
 from path_crawler import calculate_routes, get_final_route
 # third party imports
 import logging
-from constants import UNISWAP_V2, UNISWAP_V3, SUSHISWAP_V2
+from constants import UNISWAP_V2, UNISWAP_V3, SUSHISWAP_V2, MAX_ROUTES
 from heapq import merge
 import json
 
@@ -178,7 +178,7 @@ async def route_orders(sell_symbol: str, sell_ID: str, sell_amount: float, buy_s
         final_route = get_final_route(G, routes, sell_amount, sell_symbol)
         result['routes'] = final_route
     else:
-        result['routes'] = routes
+        result['routes'] = routes[:MAX_ROUTES]
     # append the routes to the result and return
     '''# save routes to file
     with open('routes.json', 'w') as f:

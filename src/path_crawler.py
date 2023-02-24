@@ -8,11 +8,11 @@ from gas_fee_estimator import get_gas_fee_in_eth
 # standard library imports
 import networkx as nx
 import json
+from constants import MAX_ROUTES
 
 G = nx.DiGraph()
 
 # calculate routes
-
 
 def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symbol: str, buy_symbol: str) -> dict:
     gas_fee = get_gas_fee_in_eth()
@@ -158,7 +158,7 @@ def get_sub_route(g, path: dict, new_sell_amount: float, sell_symbol: str, p: fl
 
 def get_final_route(g, routes: dict, sell_amount: float, sell_symbol: str) -> list:
     """Given a list of valid routes, sorted by amount out, get a final path which may split the order into multiple paths."""
-    final_route = {}
+    final_route = {'paths': []}
     remaining = sell_amount
     gas_fee = get_gas_fee_in_eth()
     route_num = 0
@@ -173,22 +173,24 @@ def get_final_route(g, routes: dict, sell_amount: float, sell_symbol: str) -> li
         if p < 1:
             continue
         # add the route to the final path
-        final_route[f'route_{route_num}'] = get_sub_route(
-            g, route['path'], max_amount, sell_symbol, p, gas_fee)
+        final_route['paths'].append(get_sub_route(
+            g, route['path'], max_amount, sell_symbol, p, gas_fee))
         route_num += 1
+        if route_num == MAX_ROUTES:
+            break
         # subtract the max amount from the remaining amount
         remaining -= max_amount
         # if the remaining amount is less than 0.01, stop
         if remaining < 0.01:
             break
 
-    routes = final_route.copy().values()
+    routes = final_route['paths']
     final_route['output_amount'] = sum(
         [route[f'swap_{len(route)-2}']['output_amount'] for route in routes])
     final_route['gas_fee'] = sum(
         [route[f'swap_{len(route)-2}']['gas_fee'] for route in routes])
     final_route['price'] = sell_amount/final_route['output_amount']
     final_route['price_impact'] = sum(
-        [route[f'swap_{len(route)-2}']['price_impact'] for route in routes]) / (len(final_route) - 4)
+        [route[f'swap_{len(route)-2}']['price_impact'] for route in routes]) / (len(final_route) - 3)
     print(json.dumps(final_route, indent=4))
     return final_route
