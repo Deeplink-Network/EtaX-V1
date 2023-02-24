@@ -189,6 +189,6 @@ def get_final_route(g, routes: dict, sell_amount: float, sell_symbol: str) -> li
         [route[f'swap_{len(route)-2}']['gas_fee'] for route in routes])
     final_route['price'] = sell_amount/final_route['output_amount']
     final_route['price_impact'] = sum(
-        [route[f'swap_{len(route)-2}']['price_impact'] for route in routes]) / len(final_route)
+        [route[f'swap_{len(route)-2}']['price_impact'] for route in routes]) / (len(final_route) - 4)
     print(json.dumps(final_route, indent=4))
     return final_route

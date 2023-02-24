@@ -2,13 +2,14 @@
 This file contains the functions to get the top X pools for a given token pair.
 '''
 
-from constants import UNISWAP_V2, SUSHISWAP_V2
+from constants import UNISWAP_V2, UNISWAP_V3, SUSHISWAP_V2
 
 # standard library imports
 import asyncio 
 import aiohttp
 import sys
 import json
+from math import sqrt
 
 # open the tokens file, a list of the top 1000 tokens by totalVolumeUSD as of 13.12.2022
 with open(r'data/uniswap_v2_tokens.json') as f:
@@ -18,6 +19,7 @@ with open(r'data/uniswap_v2_tokens.json') as f:
 ENDPOINT = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2"
 
 UNISWAPV2_ENDPOINT = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2"
+UNISWAPV3_ENDPOINT = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3"
 SUSHISWAPV2_ENDPOINT = "https://api.thegraph.com/subgraphs/name/sushi-v2/sushiswap-ethereum"
 
 # get the top X pools by reserveUSD where token0 = tokenA and token1 = tokenB
@@ -138,78 +140,149 @@ async def get_top_pools_token1(symbol_A: str, ID_A: str, symbol_B: str, ID_B: st
         except KeyError:
             continue
 
-async def get_latest_pool_data(protocol: str, X: int=1000, skip: int=0, max_metric=float) -> dict:
+def uniswap_v3_query(X: int, skip: int, max_metric: float):
+    if not max_metric:
+        return f"""
+        {{
+        pools(first:1000, skip: {skip}, orderDirection: desc, orderBy: totalValueLockedUSD) {{
+            token0 {{
+            id
+            symbol
+            decimals
+            }}
+            token1 {{
+            symbol
+            id
+            decimals
+            }}
+            id
+            totalValueLockedToken0
+            totalValueLockedToken1
+            totalValueLockedUSD
+            token0Price
+            token1Price
+            liquidity
+            sqrtPrice
+        }}
+        }}
+        """
+    else:
+        return f"""
+        {{
+        pools(first:1000, skip: {skip}, orderDirection: desc, orderBy: totalValueLockedUSD, where: {{totalValueLockedUSD_lt: {max_metric}}}) {{
+            token0 {{
+            id
+            symbol
+            decimals
+            }}
+            token1 {{
+            symbol
+            id
+            decimals
+            }}
+            id
+            totalValueLockedToken0
+            totalValueLockedToken1
+            totalValueLockedUSD
+            token0Price
+            token1Price
+            liquidity
+            sqrtPrice
+        }}
+        }}
+        """
+
+async def get_latest_pool_data(protocol: str, X: int=1000, skip: int=0, max_metric: float=None) -> dict:
     # check which endpoint to use, the schema for Uniswap V2 and Sushiswap V2 only differs by the liquidity and reserve metrics
     if protocol == UNISWAP_V2:
         endpoint = UNISWAPV2_ENDPOINT
         orderBy = 'reserveUSD'
         print('collecting data from Uniswap V2...')
+        data_field = 'pairs'
 
     elif protocol == SUSHISWAP_V2:
         endpoint = SUSHISWAPV2_ENDPOINT
         orderBy = 'liquidityUSD'
         print('collecting data from Sushiswap V2...')
-
+        data_field = 'pairs'
+    
+    elif protocol == UNISWAP_V3:
+        endpoint = UNISWAPV3_ENDPOINT
+        print('collecting data from Uniswap V3...')
+        data_field = 'pools'
 
     while True:
         try:
-            if not max_metric:
-
-                query = f"""
-                {{
-                pairs(first: {X}, orderBy: {orderBy}, orderDirection: desc, skip: {skip}) {{
-                    id
-                    {orderBy}
-                    reserve0
-                    reserve1
-                    token0Price
-                    token1Price
-                    token0 {{
-                        id
-                        symbol
-                        decimals
-                    }}
-                    token1 {{
-                        id
-                        symbol
-                        decimals
-                    }}
-                    }}
-                }}
-                """
-
+            if protocol == UNISWAP_V3:
+                    query = uniswap_v3_query(X, skip, max_metric)
             else:
-                query = f"""
-                {{
-                pairs(first: {X}, orderBy: {orderBy}, orderDirection: desc, skip: {skip}, where: {{{orderBy}_lt: {max_metric}}}) {{
-                    id
-                    {orderBy}
-                    reserve0
-                    reserve1
-                    token0Price
-                    token1Price
-                    token0 {{
+                if not max_metric:
+                    query = f"""
+                    {{
+                    pairs(first: {X}, orderBy: {orderBy}, orderDirection: desc, skip: {skip}) {{
                         id
-                        symbol
-                        decimals
+                        {orderBy}
+                        reserve0
+                        reserve1
+                        token0Price
+                        token1Price
+                        token0 {{
+                            id
+                            symbol
+                            decimals
+                        }}
+                        token1 {{
+                            id
+                            symbol
+                            decimals
+                        }}
+                        }}
                     }}
-                    token1 {{
+                    """
+
+                else:
+                    query = f"""
+                    {{
+                    pairs(first: {X}, orderBy: {orderBy}, orderDirection: desc, skip: {skip}, where: {{{orderBy}_lt: {max_metric}}}) {{
                         id
-                        symbol
-                        decimals
+                        {orderBy}
+                        reserve0
+                        reserve1
+                        token0Price
+                        token1Price
+                        token0 {{
+                            id
+                            symbol
+                            decimals
+                        }}
+                        token1 {{
+                            id
+                            symbol
+                            decimals
+                        }}
+                        }}
                     }}
-                    }}
-                }}
-                """
+                    """
 
             async with aiohttp.ClientSession() as session:
                 async with session.post(endpoint, json={'query': query}) as response:
                     obj = await response.json()
-                    pools = obj['data']['pairs']
+                    pools = obj['data'][data_field]
 
                     # assign protocol name to each pool
                     for pool in pools:
                         pool['protocol'] = protocol
+                        if protocol == UNISWAP_V3:
+                            if pool['sqrtPrice'] == '0':
+                                pool = {}
+                                continue
+
+                            sqrtprice = (float(pool['sqrtPrice']) ** 2) / (2 ** 192)
+
+                            sqrtprice = sqrt(sqrtprice)
+
+                            pool['reserve0'] = int(pool['liquidity']) / float(pool['sqrtPrice']) / (2 ** 96)
+                            pool['reserve1'] = int(pool['liquidity'])  * float(pool['sqrtPrice']) / (2 ** 96)
 
                     # print(query)
                     # print(pools)
