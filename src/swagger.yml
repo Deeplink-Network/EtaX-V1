@@ -130,7 +130,7 @@ paths:
                   paths:
                     type: array
                     items:
-                    type: object
+                      type: object
                       properties:
                         percent:
                           type: number
