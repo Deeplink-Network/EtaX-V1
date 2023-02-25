@@ -141,6 +141,9 @@ paths:
                             description:
                               type: string
                               description: A description of the swap
+                            exchange:
+                              type: string
+                              description: The exchange for the swap
                             gas_fee:
                               type: number
                               description: The gas fee for the swap
