@@ -2,7 +2,7 @@
 This file contains the functions to get the top X pools for a given token pair.
 '''
 
-from constants import UNISWAP_V2, UNISWAP_V3, SUSHISWAP_V2
+from constants import UNISWAP_V2, UNISWAP_V3, SUSHISWAP_V2, BALANCER_V1
 
 # standard library imports
 import asyncio
@@ -10,6 +10,7 @@ import aiohttp
 import sys
 import json
 from math import sqrt
+import itertools
 
 # open the tokens file, a list of the top 1000 tokens by totalVolumeUSD as of 13.12.2022
 with open(r'data/uniswap_v2_tokens.json') as f:
@@ -21,10 +22,9 @@ ENDPOINT = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2"
 UNISWAPV2_ENDPOINT = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2"
 UNISWAPV3_ENDPOINT = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3"
 SUSHISWAPV2_ENDPOINT = "https://api.thegraph.com/subgraphs/name/sushi-v2/sushiswap-ethereum"
+BALANCERV1_ENDPOINT = "https://api.thegraph.com/subgraphs/name/balancer-labs/balancer"
 
 # get the top X pools by reserveUSD where token0 = tokenA and token1 = tokenB
-
-
 async def get_top_pools_token0_token1(symbol_A: str, ID_A: str, symbol_B: str, ID_B: str, X: int) -> dict:
     # if the ID is not provided, find it
     if ID_A == None or ID_B == None:
@@ -205,30 +205,114 @@ def uniswap_v3_query(X: int, skip: int, max_metric: float):
         }}
         """
 
+def balancer_v1_query(X: int, skip: int, max_metric: float = None):
+    if not max_metric:
+        query = f"""
+        {{
+            pools(first: {X}, orderBy: liquidity, orderDirection: desc) {{
+                id
+                liquidity
+                swapFee
+                tokens(orderBy: address) {{
+                    address
+                    balance
+                    symbol
+                    denormWeight
+                }}
+            }}
+        }}
+        """
+    else:
+        query = f"""
+        {{
+            pools(first: {X}, orderBy: liquidity, orderDirection: desc, where: {{liquidity_lt: {max_metric}}}) {{
+                id
+                liquidity
+                swapFee
+                tokens(orderBy: address) {{
+                    address
+                    balance
+                    symbol
+                    denormWeight
+                }}
+            }}
+        }}
+        """
+    return query
+
+    
+# reformat balancer helper function
+def reformat_balancer_pools(pool_list):
+    ''' Reformats a list of balancer pools into the uniswap/sushiswap format. '''
+    # Define a helper function to reformat a single pool
+    def reformat_pool(pool):
+        # Get all combinations of two tokens in the balancer pool
+        token_combinations = list(itertools.combinations(pool['tokens'], 2))
+
+        # Initialize a list to hold the dictionaries for each uniswap pool
+        reformatted_pools = []
+
+        # Iterate over each token combination and create a corresponding uniswap pool dictionary
+        for combination in token_combinations:
+            token0 = combination[0]
+            token1 = combination[1]
+            pool_dict = {
+                'id': pool['id'],
+                'liquidityUSD': pool['liquidity'],
+                'swapFee': pool['swapFee'],
+                'reserve0': token0['balance'],
+                'reserve1': token1['balance'],
+                'token0': {
+                    'id': token0['address'],
+                    'symbol': token0['symbol'],
+                    'denormWeight': token0['denormWeight']
+                },
+                'token1': {
+                    'id': token1['address'],
+                    'symbol': token1['symbol'],
+                    'denormWeight': token1['denormWeight']
+                },
+                'protocol': 'Balancer_V1',
+            }
+            reformatted_pools.append(pool_dict)
+        return reformatted_pools
+
+    # Initialize a list to hold all reformatted pools
+    all_reformatted_pools = []
+
+    # Iterate over each pool and reformat it
+    for pool in pool_list:
+        reformatted_pools = reformat_pool(pool)
+        all_reformatted_pools.extend(reformatted_pools)
+
+    return all_reformatted_pools
 
 async def get_latest_pool_data(protocol: str, X: int = 1000, skip: int = 0, max_metric: float = None) -> dict:
-    # check which endpoint to use, the schema for Uniswap V2 and Sushiswap V2 only differs by the liquidity and reserve metrics
     if protocol == UNISWAP_V2:
         endpoint = UNISWAPV2_ENDPOINT
         orderBy = 'reserveUSD'
         print('collecting data from Uniswap V2...')
         data_field = 'pairs'
-
     elif protocol == SUSHISWAP_V2:
         endpoint = SUSHISWAPV2_ENDPOINT
         orderBy = 'liquidityUSD'
         print('collecting data from Sushiswap V2...')
         data_field = 'pairs'
-
     elif protocol == UNISWAP_V3:
         endpoint = UNISWAPV3_ENDPOINT
         print('collecting data from Uniswap V3...')
+        data_field = 'pools'
+    elif protocol == BALANCER_V1:
+        endpoint = BALANCERV1_ENDPOINT
+        print('collecting data from Balancer V1...')
         data_field = 'pools'
 
     while True:
         try:
             if protocol == UNISWAP_V3:
                 query = uniswap_v3_query(X, skip, max_metric)
+            elif protocol == BALANCER_V1:
+                query = balancer_v1_query(X, skip, max_metric)
             else:
                 if not max_metric:
                     query = f"""
@@ -253,7 +337,6 @@ async def get_latest_pool_data(protocol: str, X: int = 1000, skip: int = 0, max_
                         }}
                     }}
                     """
-
                 else:
                     query = f"""
                     {{
@@ -286,6 +369,7 @@ async def get_latest_pool_data(protocol: str, X: int = 1000, skip: int = 0, max_
                     # assign protocol name to each pool
                     for pool in pools:
                         pool['protocol'] = protocol
+
                         if protocol == UNISWAP_V3:
                             if pool['sqrtPrice'] == '0':
                                 pool = {}
@@ -302,23 +386,17 @@ async def get_latest_pool_data(protocol: str, X: int = 1000, skip: int = 0, max_
 
                             pool['reserve0'] = reserve0
                             pool['reserve1'] = reserve1
-                            # print(
-                            #     f'Pool calculated reserves: {pool["reserve0"]} {pool["token0"]["symbol"]} and {pool["reserve1"]} {pool["token1"]["symbol"]}')
-                            # print(
-                            #     f'Pool tvl: {pool["totalValueLockedToken0"]} {pool["token0"]["symbol"]} and {pool["totalValueLockedToken1"]} {pool["token1"]["symbol"]}')
 
-                    # print(query)
-                    # print(pools)
+                        elif protocol == BALANCER_V1:
+                            reformatted_pools = reformat_balancer_pools([pool])
+                            pools = reformatted_pools
+
                     return pools
-
-        # this sometimes fails but works on the next try, retry until it works
         except KeyError as e:
             print(e)
             continue
 
 # get the top X pools by reserveUSD where token0 != symbol_A and token1 != symbol_B
-
-
 async def get_pool_permutations(symbol_A: str, ID_A: str, symbol_B: str, ID_B: str, X: int = 100) -> dict:
     # if the ID is not provided, find it
     if ID_A == None or ID_B == None:
