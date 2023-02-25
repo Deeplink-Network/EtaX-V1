@@ -205,11 +205,27 @@ def uniswap_v3_query(X: int, skip: int, max_metric: float):
         }}
         """
 
+# need to rethink the balancer query, there are only ~1500 useful pools, liquidity_lt is giving odd values too, e.g.:
+'''
+        {
+            pools(first: 1000, skip: 5000, orderBy: liquidity, orderDirection: desc, where: {liquidity_lt: -195.66141164149587}) {
+                id
+                liquidity
+                swapFee
+                tokens(orderBy: address) {
+                    address
+                    balance
+                    symbol
+                    denormWeight
+                }
+            }
+        }
+'''
 def balancer_v1_query(X: int, skip: int, max_metric: float = None):
     if not max_metric:
         query = f"""
         {{
-            pools(first: {X}, orderBy: liquidity, orderDirection: desc) {{
+            pools(first: 1000, skip: {skip}, orderBy: liquidity, orderDirection: desc) {{
                 id
                 liquidity
                 swapFee
@@ -225,7 +241,7 @@ def balancer_v1_query(X: int, skip: int, max_metric: float = None):
     else:
         query = f"""
         {{
-            pools(first: {X}, orderBy: liquidity, orderDirection: desc, where: {{liquidity_lt: {max_metric}}}) {{
+            pools(first: 1000, skip: {skip}, orderBy: liquidity, orderDirection: desc, where: {{liquidity_lt: {max_metric}}}) {{
                 id
                 liquidity
                 swapFee
@@ -238,6 +254,9 @@ def balancer_v1_query(X: int, skip: int, max_metric: float = None):
             }}
         }}
         """
+    
+    print(query)
+
     return query
 
     

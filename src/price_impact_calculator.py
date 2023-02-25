@@ -141,7 +141,11 @@ def constant_mean_price_impact(pool: dict, sell_symbol: str, sell_amount: float)
     \nPrice impact: {price_impact_percentage}%
     """
 
-    return {'actual_return': token_amount_out, 'price_impact': price_impact_percentage, 'buy_symbol': pool[f'token{buy_token}']['symbol'], 'description': description}
+    ret = {'actual_return': token_amount_out, 'price_impact': price_impact_percentage, 'buy_symbol': pool[f'token{buy_token}']['symbol'], 'description': description}
+
+    print(ret)
+    
+    return ret
 
 
 def get_max_amount_for_impact_limit(g, path: dict):

@@ -41,18 +41,18 @@ pools = {
         'pools': [None] * 10_000
     } for exch in DEX_LIST
 }
-sushicount = 0
-unicount = 0
+
+bal_count = 0
 
 
 async def refresh_pools(protocol: str):
     print('refreshing pools...')
 
-    global sushicount
-    global unicount
+    global bal_count
 
     global pools
     global pool_dict
+
     # get the latest pool data
     new_pools = []
     metric_to_use = pools[protocol]['metric']
@@ -71,6 +71,8 @@ async def refresh_pools(protocol: str):
                 print(f'last pool metric: {last_pool_metric} {metric_to_use}')
                 for pool in new_pools:
                     pool_dict[pool['id']] = pool
+            
+    
 
         # print the number of pools with protocol = Sushiswap V2 and Uniswap v2
         '''global sushicount
@@ -142,7 +144,7 @@ def filter_pools(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, e
             f'Final buy count: {buy_count}, final sell count: {sell_count}')
         return []
 
-    print(f'sushi count: {sushicount}, uni count: {unicount}')
+    # print(f'sushi count: {sushicount}, uni count: {unicount}')
 
     return filtered_pools
 
