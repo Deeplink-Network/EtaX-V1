@@ -144,6 +144,9 @@ paths:
                             exchange:
                               type: string
                               description: The exchange for the swap
+                            dangerous:
+                              type: boolean
+                              description: Whether the swap is dangerous (i.e., goes through a pool which contains a potentially bad token)
                             gas_fee:
                               type: number
                               description: The gas fee for the swap

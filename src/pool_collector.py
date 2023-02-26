@@ -15,6 +15,11 @@ from math import sqrt
 with open(r'data/uniswap_v2_tokens.json') as f:
     TOKENS = json.load(f)
 
+# Collect the list of bad_tokens
+with open(r'data/bad_tokens.json') as f:
+    BAD_TOKENS = json.load(f)
+    BAD_TOKEN_SYMS = [token['symbol'] for token in BAD_TOKENS['tokens']]
+
 # keeping this here for redundant fallback method, can remove later
 ENDPOINT = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2"
 
@@ -285,6 +290,7 @@ async def get_latest_pool_data(protocol: str, X: int = 1000, skip: int = 0, max_
 
                     # assign protocol name to each pool
                     for pool in pools:
+                        pool['dangerous'] = pool['token0']['symbol'] in BAD_TOKEN_SYMS or pool['token1']['symbol'] in BAD_TOKEN_SYMS
                         pool['protocol'] = protocol
                         if protocol == UNISWAP_V3:
                             if pool['sqrtPrice'] == '0':

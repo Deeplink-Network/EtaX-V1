@@ -24,6 +24,7 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
             swap_number = 0
             for pool in path:
                 protocol = G.nodes[pool]['pool']['protocol']
+                dangerous = G.nodes[pool]['pool']['dangerous']
                 print(pool)
                 print(f'swap {swap_number}')
                 if pool == path[0]:
@@ -42,6 +43,7 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
                         f'swap_{swap_number}': {
                             'pool': pool,
                             'exchange': protocol,
+                            'dangerous': dangerous,
                             'input_token': sell_symbol,
                             'input_amount': sell_amount,
                             'output_token': output_symbol,
@@ -70,6 +72,7 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
                     routes[f'route_{count}'][f'swap_{swap_number}'] = {
                         'pool': pool,
                         'exchange': protocol,
+                        'dangerous': dangerous,
                         'input_token': old_input_symbol,
                         'input_amount': input_amount,
                         'output_token': output_symbol,
@@ -107,6 +110,7 @@ def get_sub_route(g, path: dict, new_sell_amount: float, sell_symbol: str, p: fl
     swap_no = 0
     for pool in path:
         protocol = g.nodes[pool]['pool']['protocol']
+        dangerous = g.nodes[pool]['pool']['dangerous']
         if pool == path[0]:
             # get the price impact calculator values
             values = xyk_price_impact(
@@ -122,6 +126,7 @@ def get_sub_route(g, path: dict, new_sell_amount: float, sell_symbol: str, p: fl
             route[f'swap_{swap_no}'] = {
                 'pool': pool,
                 'exchange': protocol,
+                'dangerous': dangerous,
                 'input_token': sell_symbol,
                 'input_amount': new_sell_amount,
                 'output_token': output_symbol,
@@ -147,6 +152,7 @@ def get_sub_route(g, path: dict, new_sell_amount: float, sell_symbol: str, p: fl
             route[f'swap_{swap_no}'] = {
                 'pool': pool,
                 'exchange': protocol,
+                'dangerous': dangerous,
                 'input_token': old_input_symbol,
                 'input_amount': input_amount,
                 'output_token': output_symbol,
