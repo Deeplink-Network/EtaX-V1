@@ -2,14 +2,15 @@
 This file contains the functions to get the top X pools for a given token pair.
 '''
 
-from constants import UNISWAP_V2, UNISWAP_V3, SUSHISWAP_V2
+from constants import UNISWAP_V2, UNISWAP_V3, SUSHISWAP_V2, CURVE
 
 # standard library imports
 import asyncio
 import aiohttp
 import sys
 import json
-from math import sqrt
+from itertools import combinations
+import logging
 
 # open the tokens file, a list of the top 1000 tokens by totalVolumeUSD as of 13.12.2022
 with open(r'data/uniswap_v2_tokens.json') as f:
@@ -26,6 +27,7 @@ ENDPOINT = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2"
 UNISWAPV2_ENDPOINT = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2"
 UNISWAPV3_ENDPOINT = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3"
 SUSHISWAPV2_ENDPOINT = "https://api.thegraph.com/subgraphs/name/sushi-v2/sushiswap-ethereum"
+CURVE_ENDPOINT = "https://api.curve.fi/api/getPools/ethereum/main"
 
 # get the top X pools by reserveUSD where token0 = tokenA and token1 = tokenB
 
@@ -210,6 +212,42 @@ def uniswap_v3_query(X: int, skip: int, max_metric: float):
         }}
         """
 
+async def collect_curve_pools():
+    res = []
+    async with aiohttp.ClientSession() as session:
+        async with session.get(CURVE_ENDPOINT) as response:
+            obj = await response.json()
+            data = obj['data']['poolData']
+            #print(json.dumps(data, indent=4))
+            for pool in data:
+                pairs = combinations(pool['coins'], 2)
+                for pair in pairs:
+                    print(f"pool: {pool.get('name', 'NONE')}, pair: {pair[0]['symbol']}-{pair[1]['symbol']}")
+
+                    decimals0 = int(pair[0]['decimals'])
+                    decimals1 = int(pair[1]['decimals'])
+
+                    new_pair = {}
+                    new_pair['id'] = pool['address'].lower()
+                    new_pair['reserve0'] = int(pair[0]['poolBalance']) / 10**decimals0
+                    new_pair['reserve1'] = int(pair[1]['poolBalance']) / 10**decimals1
+                    new_pair['token0'] = {
+                        'id': pair[0]['address'].lower(),
+                        'symbol': pair[0]['symbol'],
+                        'decimals': decimals0
+                    }
+                    new_pair['token1'] = {
+                        'id': pair[1]['address'].lower(),
+                        'symbol': pair[1]['symbol'],
+                        'decimals': decimals1
+                    }
+                    new_pair['token0Price'] = new_pair['reserve0'] / new_pair['reserve1']
+                    new_pair['token1Price'] = new_pair['reserve1'] / new_pair['reserve0']
+                    new_pair['reserveUSD'] = new_pair['reserve0'] * pair[0]['usdPrice'] + new_pair['reserve1'] * pair[1]['usdPrice']
+                    new_pair['protocol'] = CURVE
+                    new_pair['dangerous'] = new_pair['token0']['symbol'] in BAD_TOKEN_SYMS or new_pair['token1']['symbol'] in BAD_TOKEN_SYMS
+                    res.append(new_pair)
+    return res
 
 async def get_latest_pool_data(protocol: str, X: int = 1000, skip: int = 0, max_metric: float = None) -> dict:
     # check which endpoint to use, the schema for Uniswap V2 and Sushiswap V2 only differs by the liquidity and reserve metrics
@@ -320,6 +358,15 @@ async def get_latest_pool_data(protocol: str, X: int = 1000, skip: int = 0, max_
         # this sometimes fails but works on the next try, retry until it works
         except KeyError as e:
             print(e)
+            continue
+
+        except asyncio.exceptions.TimeoutError as e:
+            logging.error("Timeout error while fetching pools")
+            continue
+
+        except Exception as e:
+            logging.error("Error while fetching pools")
+            logging.error(e)
             continue
 
 # get the top X pools by reserveUSD where token0 != symbol_A and token1 != symbol_B

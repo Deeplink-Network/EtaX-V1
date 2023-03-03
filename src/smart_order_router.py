@@ -3,13 +3,13 @@ This module contains the main function for the smart order router, calling all t
 '''
 
 # local imports
-from pool_collector import get_latest_pool_data, get_pool_permutations
+from pool_collector import get_latest_pool_data, get_pool_permutations, collect_curve_pools
 from graph_constructor import construct_pool_graph, pool_graph_to_dict
 from pathfinder import find_shortest_paths, validate_all_paths, create_path_graph, path_graph_to_dict
 from path_crawler import calculate_routes, get_final_route
 # third party imports
 import logging
-from constants import UNISWAP_V2, UNISWAP_V3, SUSHISWAP_V2, MAX_ROUTES
+from constants import UNISWAP_V2, UNISWAP_V3, SUSHISWAP_V2, CURVE, MAX_ROUTES
 from heapq import merge
 import json
 
@@ -18,13 +18,15 @@ MAX_ORDERS = 20
 DEX_LIST = (
     UNISWAP_V2,
     UNISWAP_V3,
-    SUSHISWAP_V2
+    SUSHISWAP_V2,
+    CURVE
 )
 
 DEX_METRIC_MAP = {
     UNISWAP_V2: 'reserveUSD',
     UNISWAP_V3: 'totalValueLockedUSD',
-    SUSHISWAP_V2: 'liquidityUSD'
+    SUSHISWAP_V2: 'liquidityUSD',
+    CURVE: 'reserveUSD'
 }
 
 BLACKLISTED_TOKENS = [
@@ -51,6 +53,9 @@ async def refresh_pools(protocol: str):
 
     global pools
     global pool_dict
+    if protocol == CURVE:
+        pools[protocol]['pools'] = await collect_curve_pools()
+        return
     # get the latest pool data
     new_pools = []
     metric_to_use = pools[protocol]['metric']
@@ -142,6 +147,8 @@ def filter_pools(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, e
 
     print(f'sushi count: {sushicount}, uni count: {unicount}')
 
+    print(len(filtered_pools))
+
     return filtered_pools
 
 
@@ -151,10 +158,11 @@ async def route_orders(sell_symbol: str, sell_ID: str, sell_amount: float, buy_s
     # pools = await get_pool_permutations(sell_symbol, sell_ID, buy_symbol, buy_ID)
     filt_pools = filter_pools(sell_symbol, sell_ID,
                               buy_symbol, buy_ID, exchanges=exchanges)
-    if len(filt_pools) < 25:
+    if len(filt_pools) < 5:
         filt_pools = await get_pool_permutations(sell_symbol, sell_ID, buy_symbol, buy_ID)
         filt_pools = [
             pool for pool in filt_pools if pool['protocol'] in exchanges]
+    print(json.dumps(filt_pools, indent=4))
     # construct the pool graph
     G = construct_pool_graph(filt_pools)
     # get the graph dict

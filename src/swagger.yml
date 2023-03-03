@@ -46,7 +46,7 @@ paths:
           items:
             type: string
           required: false
-          description: The exchanges to include in the route. Defaults to all if not provided. One of "Uniswap_V2", "Uniswap_V3", "Sushiwap_V2"
+          description: The exchanges to include in the route. Defaults to all if not provided. One of "Uniswap_V2", "Uniswap_V3", "Sushiwap_V2", "Curve"
       responses:
         200:
           description: Success
@@ -99,7 +99,7 @@ paths:
           items:
             type: string
           required: false
-          description: The exchanges to include in the route. Defaults to all if not provided. Current options are "Uniswap_V2", "Uniswap_V3", "Sushiwap_V2"
+          description: The exchanges to include in the route. Defaults to all if not provided. Current options are "Uniswap_V2", "Uniswap_V3", "Sushiwap_V2", "Curve"
       responses:
         200:
           description: Success
