@@ -241,8 +241,8 @@ async def collect_curve_pools():
                         'symbol': pair[1]['symbol'],
                         'decimals': decimals1
                     }
-                    new_pair['token0Price'] = new_pair['reserve0'] / new_pair['reserve1']
-                    new_pair['token1Price'] = new_pair['reserve1'] / new_pair['reserve0']
+                    new_pair['token0Price'] = pair[1]['usdPrice'] / pair[0]['usdPrice']
+                    new_pair['token1Price'] = pair[0]['usdPrice'] / pair[1]['usdPrice']
                     new_pair['reserveUSD'] = new_pair['reserve0'] * pair[0]['usdPrice'] + new_pair['reserve1'] * pair[1]['usdPrice']
                     new_pair['protocol'] = CURVE
                     new_pair['dangerous'] = new_pair['token0']['symbol'] in BAD_TOKEN_SYMS or new_pair['token1']['symbol'] in BAD_TOKEN_SYMS

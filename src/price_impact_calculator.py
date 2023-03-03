@@ -3,11 +3,10 @@ This script calculates the price impact of a swap in a given pool using the xyk 
 '''
 # Max price impact for a path before the order is split
 import json
-from constants import SUSHISWAP_V2, UNISWAP_V2
+from constants import SUSHISWAP_V2, UNISWAP_V2, CURVE
 MAX_PRICE_IMPACT = 0.10
 
 # calculate the predicted price impact percentage when swapping one token for another in a given pool
-
 
 def xyk_price_impact(pool: dict, sell_symbol: str, sell_amount: float) -> dict:
     # NOR check that sell_token is in the pool, do not proceed if it is not
@@ -28,27 +27,32 @@ def xyk_price_impact(pool: dict, sell_symbol: str, sell_amount: float) -> dict:
     # calculated the expected return
     expected_return = sell_amount/expected_price
 
-    # constant product formula (xyk)
-    x = float(pool[f'reserve{sell_token}'])
-    y = float(pool[f'reserve{buy_token}'])
+    if pool['protocol'] == CURVE:
+        actual_return = min(float(pool[f'reserve{buy_token}']), expected_return)
+        price_impact = (1-(actual_return/expected_return))*100
 
-    # Sushiswap subgraph returns decimals adjusted values, so we need to adjust them back
-    if pool['protocol'] == SUSHISWAP_V2:
-        x = x/10**int(pool[f'token{sell_token}']['decimals'])
-        y = y/10**int(pool[f'token{buy_token}']['decimals'])
+    else:
+        # constant product formula (xyk)
+        x = float(pool[f'reserve{sell_token}'])
+        y = float(pool[f'reserve{buy_token}'])
 
-    print(x, y)
+        # Sushiswap subgraph returns decimals adjusted values, so we need to adjust them back
+        if pool['protocol'] == SUSHISWAP_V2:
+            x = x/10**int(pool[f'token{sell_token}']['decimals'])
+            y = y/10**int(pool[f'token{buy_token}']['decimals'])
 
-    k = x*y
+        print(x, y)
 
-    # calculate new amount of buy_token in the pool after xyk adjustment
-    y_new = k/(x+sell_amount)
+        k = x*y
 
-    # calculate actual amount of buy_token received
-    actual_return = y-y_new
+        # calculate new amount of buy_token in the pool after xyk adjustment
+        y_new = k/(x+sell_amount)
 
-    # calculate price impact percentage
-    price_impact = (1-(actual_return/expected_return))*100
+        # calculate actual amount of buy_token received
+        actual_return = y-y_new
+
+        # calculate price impact percentage
+        price_impact = (1-(actual_return/expected_return))*100
 
     description = f"""Sell {sell_amount} {sell_symbol} for {pool[f'token{buy_token}']['symbol']} in {' '.join(pool['protocol'].split('_'))} {pool['id']}
     \nExpected return: {actual_return} {pool[f'token{buy_token}']['symbol']}
