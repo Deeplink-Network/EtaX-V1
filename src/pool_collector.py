@@ -332,7 +332,8 @@ async def get_latest_pool_data(protocol: str, X: int = 1000, skip: int = 0, max_
                         pool['protocol'] = protocol
                         if protocol == UNISWAP_V3:
                             if pool['sqrtPrice'] == '0':
-                                pool = {}
+                                pool['reserve0'] = 0
+                                pool['reserve1'] = 0
                                 continue
 
                             sqrtPrice = float(pool['sqrtPrice']) / (2 ** 96)

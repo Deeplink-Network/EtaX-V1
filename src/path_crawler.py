@@ -25,7 +25,6 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
             for pool in path:
                 protocol = G.nodes[pool]['pool']['protocol']
                 dangerous = G.nodes[pool]['pool']['dangerous']
-                print(pool)
                 print(f'swap {swap_number}')
                 if pool == path[0]:
                     # get the price impact calculator values
@@ -36,7 +35,6 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
                     output_amount = values['actual_return']
                     price_impact = values['price_impact']
                     description = values['description']
-                    print(description)
 
                     # add the route to the dictionary under the swap key
                     routes[f'route_{count}'] = {
@@ -66,7 +64,6 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
                     output_amount = values['actual_return']
                     price_impact = values['price_impact']
                     description = values['description']
-                    print(description)
 
                     # add the route to the dictionary under the swap key
                     routes[f'route_{count}'][f'swap_{swap_number}'] = {
@@ -94,9 +91,11 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
             routes[f'route_{count}']['path'] = path
             count += 1
             print('------------------------------------------------------------')
-        except:
+        except Exception as e:
             # delete the route if it doesn't work
-            # del routes[f'route_{count}']
+            if f'route_{count}' in routes:
+                del routes[f'route_{count}']
+            print(e)
             continue
 
     # sort routes by amount out
@@ -120,7 +119,6 @@ def get_sub_route(g, path: dict, new_sell_amount: float, sell_symbol: str, p: fl
             output_amount = values['actual_return']
             price_impact = values['price_impact']
             description = values['description']
-            print(description)
 
             # add the route to the dictionary under the swap key
             route[f'swap_{swap_no}'] = {
@@ -146,7 +144,6 @@ def get_sub_route(g, path: dict, new_sell_amount: float, sell_symbol: str, p: fl
             output_amount = values['actual_return']
             price_impact = values['price_impact']
             description = values['description']
-            print(description)
 
             # add the route to the dictionary under the swap key
             route[f'swap_{swap_no}'] = {
@@ -204,5 +201,5 @@ def get_final_route(g, routes: dict, sell_amount: float, sell_symbol: str) -> li
     final_route['price'] = sell_amount/final_route['output_amount']
     final_route['price_impact'] = sum(
         [route[f'swap_{len(route)-2}']['price_impact'] for route in routes]) / (len(final_route) - 3)
-    print(json.dumps(final_route, indent=4))
+    # print(json.dumps(final_route, indent=4))
     return final_route

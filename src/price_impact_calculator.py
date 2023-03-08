@@ -5,6 +5,7 @@ This script calculates the price impact of a swap in a given pool using the xyk 
 import json
 from constants import SUSHISWAP_V2, UNISWAP_V2, CURVE
 MAX_PRICE_IMPACT = 0.10
+import logging
 
 # calculate the predicted price impact percentage when swapping one token for another in a given pool
 
@@ -30,6 +31,8 @@ def xyk_price_impact(pool: dict, sell_symbol: str, sell_amount: float) -> dict:
     if pool['protocol'] == CURVE:
         actual_return = min(float(pool[f'reserve{buy_token}']), expected_return)
         price_impact = (1-(actual_return/expected_return))*100
+        if actual_return == 0:
+            logging.error('Curve pool has no liquidity: '+pool['id'])
 
     else:
         # constant product formula (xyk)
@@ -74,14 +77,14 @@ def get_max_amount_for_impact_limit(g, path: dict):
     max_price_imp_amount = None
     next_pool_amount = 10e30
 
-    print(json.dumps(path, indent=4))
+    # print(json.dumps(path, indent=4))
 
     while pool_num >= 0:
 
         swap = path[f'swap_{pool_num}']
         pool = g.nodes[swap['pool']]['pool']
 
-        print(pool)
+        # print(pool)
 
         sell_token = swap['input_token']
         buy_token = swap['output_token']
