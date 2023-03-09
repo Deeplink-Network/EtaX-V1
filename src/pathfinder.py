@@ -37,38 +37,52 @@ def get_partner_symbol(node: str, current_symbol: str) -> str:
     # else return the second token
     return tokens[1]
 
+def get_partner_id(node: str, current_id: int, G: nx.classes.digraph.Graph) -> int:
+    # get the IDs in the node
+    node_data = G.nodes[node]
+    ids = [node_data['token0']['id'], node_data['token1']['id']]
+    # find the index of the current ID
+    current_index = ids.index(current_id)
+    # return the ID at the other index
+    return ids[(current_index + 1) % len(ids)]
+
 '''
-check path validity using get_partner_symbol function
-enter the first node, swap sell_symbol for the node's other token
+check path validity using get_partner_id function
+enter the first node, swap sell_id for the node's other token
 enter the next node, swap the previous node's other token for the node's other token and so on
-if the final node outputs buy_symbol, the path is valid
+if the final node outputs buy_id, the path is valid
 '''
-def check_path_validity(path: list, sell_symbol: str, buy_symbol: str) -> bool:
+def check_path_validity(G: nx.classes.digraph.Graph, path: list, sell_id: int, buy_id: int) -> bool:
     for node in path:
+        node_data = G.nodes[node]
+        # get the IDs in the node
+        ids = [node_data[f"token{i}"]['id'] for i in range(2)]
         # for the first node
         if node == path[0]:
-            output_token = get_partner_symbol(node, sell_symbol)
+            output_id = get_partner_id(node, sell_id, G)
         # for the other nodes
         else:
-            # check if output_token is exactly one of the tokens in the node
-            if output_token not in node.split('_'):
+            # check if output_id is exactly one of the IDs in the node
+            if output_id not in ids:
                 return False 
-            output_token = get_partner_symbol(node, output_token)
+            output_id = get_partner_id(node, output_id, G)
         # for the last node
         if node == path[-1]:
-            if output_token != buy_symbol:
+            if output_id != buy_id:
                 return False
                 
     return True
 
+
 # check the validity of all paths
-def validate_all_paths(G: nx.classes.digraph.Graph, paths: list, sell_symbol: str, buy_symbol: str) -> list:
+def validate_all_paths(G: nx.classes.digraph.Graph, paths: list, sell_id: int, buy_id: int) -> list:
     valid_paths = []
     for path in paths:
-        if check_path_validity(path, sell_symbol, buy_symbol):
+        if check_path_validity(G, path, sell_id, buy_id):
             valid_paths.append(path)
 
     return valid_paths
+
 
 # run path validation over all paths
 def create_path_graph(paths: list) -> nx.classes.graph.Graph:

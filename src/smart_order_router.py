@@ -172,7 +172,7 @@ async def route_orders(sell_symbol: str, sell_ID: str, sell_amount: float, buy_s
     # find the shortest paths
     paths = find_shortest_paths(G, sell_symbol, buy_symbol)
     # validate the paths
-    valid_paths = validate_all_paths(G, paths, sell_symbol, buy_symbol)
+    valid_paths = validate_all_paths(G, paths, sell_ID, buy_ID)
     # create the path graph
     path_graph = create_path_graph(valid_paths)
     # get the path graph dict
