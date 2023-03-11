@@ -13,7 +13,6 @@ from constants import MAX_ROUTES
 G = nx.DiGraph()
 
 # calculate routes
-
 def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symbol: str, buy_symbol: str) -> dict:
     gas_fee = get_gas_fee_in_eth()
     count = 0
@@ -89,10 +88,12 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
             routes[f'route_{count}']['price'] = sell_amount/output_amount
             routes[f'route_{count}']['gas_fee'] = gas_fee*swap_number
             routes[f'route_{count}']['path'] = path
+            routes[f'route_{count}']['price_impact'] = sum(
+                [routes[f'route_{count}'][f'swap_{i}']['price_impact'] for i in range(swap_number)])
             count += 1
             print('------------------------------------------------------------')
         except Exception as e:
-            # delete the route if it doesn't work
+            # redundant error check, delete the route if it doesn't work
             if f'route_{count}' in routes:
                 del routes[f'route_{count}']
             print(e)

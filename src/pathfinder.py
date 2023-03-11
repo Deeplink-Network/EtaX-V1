@@ -46,12 +46,6 @@ def get_partner_id(node: str, current_id: int, G: nx.classes.digraph.Graph) -> i
     # return the ID at the other index
     return ids[(current_index + 1) % len(ids)]
 
-'''
-check path validity using get_partner_id function
-enter the first node, swap sell_id for the node's other token
-enter the next node, swap the previous node's other token for the node's other token and so on
-if the final node outputs buy_id, the path is valid
-'''
 def check_path_validity(G: nx.classes.digraph.Graph, path: list, sell_id: int, buy_id: int) -> bool:
     for node in path:
         node_data = G.nodes[node]
@@ -73,7 +67,6 @@ def check_path_validity(G: nx.classes.digraph.Graph, path: list, sell_id: int, b
                 
     return True
 
-
 # check the validity of all paths
 def validate_all_paths(G: nx.classes.digraph.Graph, paths: list, sell_id: int, buy_id: int) -> list:
     valid_paths = []
@@ -82,7 +75,6 @@ def validate_all_paths(G: nx.classes.digraph.Graph, paths: list, sell_id: int, b
             valid_paths.append(path)
 
     return valid_paths
-
 
 # run path validation over all paths
 def create_path_graph(paths: list) -> nx.classes.graph.Graph:

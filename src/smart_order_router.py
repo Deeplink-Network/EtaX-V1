@@ -75,41 +75,7 @@ async def refresh_pools(protocol: str):
                 for pool in new_pools:
                     pool_dict[pool['id']] = pool
 
-        # print the number of pools with protocol = Sushiswap V2 and Uniswap v2
-        '''global sushicount
-        global unicount
-        for pool in pools:
-            # this is where the pools are mapped to their IDs
-            # this way they should just replace the old pools rather than being appended forever
-            # add the pool to the dictionary by mapping its id to the pool itself
-            if pool: 
-                pool_dict[pool['id']] = pool
-                if pool['protocol'] == 'Sushiswap_V2':
-                    sushicount += 1
-                elif pool['protocol'] == 'Uniswap V2':
-                    unicount += 1
-    print(f'number of pools with protocol = Sushiswap V2: {sushicount}')
-    print(f'number of pools with protocol = Uniswap V2: {unicount}')
-    print(f'number of unique pools: {len(pool_dict)}')'''
-    # pools = new_pools
-    # await asyncio.sleep(5)
-
-# potentially faster way to flatten the dictionary to a list
-'''
-import itertools
-import multiprocessing
-
-def flatten_dict(pool_dict):
-    sub_dicts = (sub_dict for dict_data in pool_dict.values() for dict_id, sub_dict in dict_data.items())
-    with multiprocessing.Pool() as pool:
-        return list(itertools.chain.from_iterable(pool.imap_unordered(iter, sub_dicts, chunksize=1000)))
-
-flattened_list = flatten_dict(pool_dict)
-'''
-
 # filter the pools for the query
-
-
 def filter_pools(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, exchanges=None, X: int = 50) -> list:
     filtered_pools = []
     full_pools = merge(*[pools[protocol]['pools'] for protocol in DEX_LIST], reverse=True, key=lambda x: float(x[pools[x['protocol']]['metric']]) if x else 0)
@@ -151,7 +117,6 @@ def filter_pools(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, e
 
     return filtered_pools
 
-
 async def route_orders(sell_symbol: str, sell_ID: str, sell_amount: float, buy_symbol: str, buy_ID: str, exchanges, split=False) -> dict:
     result = {}
     # get the pools
@@ -187,8 +152,4 @@ async def route_orders(sell_symbol: str, sell_ID: str, sell_amount: float, buy_s
         result['routes'] = final_route
     else:
         result['routes'] = routes[:MAX_ROUTES]
-    # append the routes to the result and return
-    '''# save routes to file
-    with open('routes.json', 'w') as f:
-        json.dump(routes, f)'''
     return result
