@@ -1,7 +1,7 @@
 aiohttp
-networkx
+Flask
+Flask-Cors
 matplotlib
+networkx
 web3
 python-dotenv
-Flask[async]
-Flask-Cors

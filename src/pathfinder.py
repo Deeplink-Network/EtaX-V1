@@ -4,7 +4,7 @@ This file contains the functions that find the shortest paths between two symbol
 
 # third party imports
 import networkx as nx
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 # get the shortest paths from sell_symbol to buy_symbol using bellman-ford
 def find_shortest_paths(G: nx.classes.digraph.DiGraph, sell_symbol: str, buy_symbol: str) -> list:
@@ -100,6 +100,7 @@ def create_path_graph(paths: list) -> nx.classes.graph.Graph:
 def path_graph_to_dict(G: nx.classes.graph.Graph) -> dict:
     return nx.to_dict_of_lists(G)
 
+'''
 # draw the paths as a multipartite graph    
 def draw_path_graph(G: nx.classes.graph.Graph) -> None:
     # get the positions of the nodes
@@ -112,3 +113,4 @@ def draw_path_graph(G: nx.classes.graph.Graph) -> None:
     nx.draw(G, pos=pos, with_labels=True, labels=labels, node_size=1000, font_size=24)
     # show the graph
     plt.show()
+'''

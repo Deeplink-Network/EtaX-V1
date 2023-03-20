@@ -4,7 +4,7 @@ This script constructs a graph of Uniswap pools which were collected from pool_c
 
 # third party imports
 import networkx as nx
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 # standard library imports
 import json
@@ -55,6 +55,7 @@ def construct_pool_graph(pools: json) -> nx.classes.graph.Graph:
 def pool_graph_to_dict(G: nx.DiGraph()) -> dict:
     return nx.to_dict_of_lists(G)
 
+'''
 # draw the graph in a circular layout
 def draw_pool_graph(G: nx.DiGraph()) -> None:
     # labels are SYMBOLA SYMBOLB
@@ -89,3 +90,4 @@ def draw_pool_graph(G: nx.DiGraph()) -> None:
     # increase the res
     # plt.savefig('data/graph.png', dpi=200)
     plt.show()
+'''

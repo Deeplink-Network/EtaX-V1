@@ -2,10 +2,11 @@
 This script calculates the price impact of a swap in a given pool using the xyk constant product formula.
 '''
 # Max price impact for a path before the order is split
-import json
+# import json
 from constants import SUSHISWAP_V2, UNISWAP_V2, CURVE
-MAX_PRICE_IMPACT = 0.10
 import logging
+
+MAX_PRICE_IMPACT = 0.10
 
 # calculate the predicted price impact percentage when swapping one token for another in a given pool
 
