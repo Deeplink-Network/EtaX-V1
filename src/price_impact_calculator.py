@@ -73,7 +73,7 @@ def get_max_amount_for_impact_limit(g, path: dict):
     Starts at the end pool and calculates the amount of sell token that can be swapped without exceeding the max price impact limit. Then moves back to the start, finding how much of the sell token is needed to swap the amount calculated in the previous pool, as well as the amount of the token in that pool required to not break the price impact limit. The minimum of these two values is taken. This is repeated until the start pool is reached.
     """
 
-    pool_num = len(path)-6
+    pool_num = len(path)-7
     sell_amount = None
     max_price_imp_amount = None
     next_pool_amount = 10e30
