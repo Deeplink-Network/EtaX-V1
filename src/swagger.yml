@@ -6,7 +6,7 @@ info:
 
 schemes:
 - https
-host: etax.au.ngrok.io
+host: api.deeplink.network
 basePath: /
 
 paths:

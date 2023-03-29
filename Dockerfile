@@ -8,8 +8,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the files from the src directory to the app directory in the container
 COPY src/ .
 
-ENV FLASK_APP=server.py
-ENV FLASK_RUN_HOST=0.0.0.0
 EXPOSE 5000
 
-CMD ["flask", "run"]
+CMD ["gunicorn", "-b", "0.0.0.0:5000", "server:main()"]

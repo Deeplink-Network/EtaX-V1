@@ -1,6 +1,8 @@
 aiohttp
-Flask
+Flask[async]
 Flask-Cors
+gevent
+gunicorn
 matplotlib
 networkx
 web3
