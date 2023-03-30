@@ -2,15 +2,25 @@
 This file contains the functions to get the top X pools for a given token pair.
 '''
 
+<<<<<<< Updated upstream
 from constants import UNISWAP_V2, UNISWAP_V3, SUSHISWAP_V2, BALANCER_V1
+=======
+from constants import UNISWAP_V2, UNISWAP_V3, SUSHISWAP_V2, CURVE, BALANCER_V1
+>>>>>>> Stashed changes
 
 # standard library imports
 import asyncio
 import aiohttp
 import sys
 import json
+<<<<<<< Updated upstream
 from math import sqrt
 import itertools
+=======
+import itertools
+from itertools import combinations
+import logging
+>>>>>>> Stashed changes
 
 # open the tokens file, a list of the top 1000 tokens by totalVolumeUSD as of 13.12.2022
 with open(r'data/uniswap_v2_tokens.json') as f:
@@ -22,6 +32,10 @@ ENDPOINT = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2"
 UNISWAPV2_ENDPOINT = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2"
 UNISWAPV3_ENDPOINT = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3"
 SUSHISWAPV2_ENDPOINT = "https://api.thegraph.com/subgraphs/name/sushi-v2/sushiswap-ethereum"
+<<<<<<< Updated upstream
+=======
+CURVE_ENDPOINT = "https://api.curve.fi/api/getPools/ethereum/main"
+>>>>>>> Stashed changes
 BALANCERV1_ENDPOINT = "https://api.thegraph.com/subgraphs/name/balancer-labs/balancer"
 
 # get the top X pools by reserveUSD where token0 = tokenA and token1 = tokenB
@@ -204,6 +218,87 @@ def uniswap_v3_query(X: int, skip: int, max_metric: float):
         }}
         }}
         """
+    
+async def collect_balancer_pools():
+    res = []
+    skip = 0
+    has_more_data = True
+
+    async with aiohttp.ClientSession() as session:
+        while has_more_data:
+            query = f"""
+            {{
+                pools(first: 1000, orderBy: liquidity, orderDirection: desc, skip: {skip}) {{
+                    id
+                    swapFee
+                    tokensList
+                    tokens(orderBy: address) {{
+                        address
+                        balance
+                        symbol
+                        denormWeight
+                    }}
+                }}
+            }}
+            """
+
+            async with session.post(BALANCERV1_ENDPOINT, json={'query': query}) as response:
+                obj = await response.json()
+                data = obj['data']['pools']
+
+                if data:
+                    res.extend(data)
+                    skip += 1000
+                else:
+                    has_more_data = False
+
+    return res
+
+# reformat balancer helper function
+def reformat_balancer_pools(pool_list):
+    ''' Reformats a list of balancer pools into the uniswap/sushiswap format. '''
+    # Define a helper function to reformat a single pool
+    def reformat_pool(pool):
+        # Get all combinations of two tokens in the balancer pool
+        token_combinations = list(itertools.combinations(pool['tokens'], 2))
+
+        # Initialize a list to hold the dictionaries for each uniswap pool
+        reformatted_pools = []
+
+        # Iterate over each token combination and create a corresponding uniswap pool dictionary
+        for combination in token_combinations:
+            token0 = combination[0]
+            token1 = combination[1]
+            pool_dict = {
+                'id': pool['id'],
+                'liquidityUSD': pool['liquidity'],
+                'swapFee': pool['swapFee'],
+                'reserve0': token0['balance'],
+                'reserve1': token1['balance'],
+                'token0': {
+                    'id': token0['address'],
+                    'symbol': token0['symbol'],
+                    'denormWeight': token0['denormWeight']
+                },
+                'token1': {
+                    'id': token1['address'],
+                    'symbol': token1['symbol'],
+                    'denormWeight': token1['denormWeight']
+                },
+                'protocol': 'Balancer V1',
+            }
+            reformatted_pools.append(pool_dict)
+        return reformatted_pools
+
+    # Initialize a list to hold all reformatted pools
+    all_reformatted_pools = []
+
+    # Iterate over each pool and reformat it
+    for pool in pool_list:
+        reformatted_pools = reformat_pool(pool)
+        all_reformatted_pools.extend(reformatted_pools)
+
+    return all_reformatted_pools
 
 # need to rethink the balancer query, there are only ~1500 useful pools, liquidity_lt is giving odd values too, e.g.:
 '''

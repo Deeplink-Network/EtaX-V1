@@ -3,13 +3,21 @@ This module contains the main function for the smart order router, calling all t
 '''
 
 # local imports
+<<<<<<< Updated upstream
 from pool_collector import get_latest_pool_data, get_pool_permutations
+=======
+from pool_collector import get_latest_pool_data, get_pool_permutations, collect_curve_pools, collect_balancer_pools, reformat_balancer_pools
+>>>>>>> Stashed changes
 from graph_constructor import construct_pool_graph, pool_graph_to_dict
 from pathfinder import find_shortest_paths, validate_all_paths, create_path_graph, path_graph_to_dict
 from path_crawler import calculate_routes, get_final_route
 # third party imports
 import logging
+<<<<<<< Updated upstream
 from constants import UNISWAP_V2, UNISWAP_V3, SUSHISWAP_V2, BALANCER_V1, MAX_ROUTES
+=======
+from constants import UNISWAP_V2, UNISWAP_V3, SUSHISWAP_V2, CURVE, BALANCER_V1, MAX_ROUTES
+>>>>>>> Stashed changes
 from heapq import merge
 import json
 
@@ -19,14 +27,24 @@ DEX_LIST = (
     UNISWAP_V2,
     UNISWAP_V3,
     SUSHISWAP_V2,
+<<<<<<< Updated upstream
+=======
+    CURVE,
+>>>>>>> Stashed changes
     BALANCER_V1
 )
 
 DEX_METRIC_MAP = {
     UNISWAP_V2: 'reserveUSD',
     UNISWAP_V3: 'totalValueLockedUSD',
+<<<<<<< Updated upstream
     SUSHISWAP_V2: 'liquidityUSD', 
     BALANCER_V1: 'liquidityUSD'
+=======
+    SUSHISWAP_V2: 'liquidityUSD',
+    CURVE: 'reserveUSD',
+    BALANCER_V1: 'liquidity'
+>>>>>>> Stashed changes
 }
 
 BLACKLISTED_TOKENS = [
@@ -52,7 +70,18 @@ async def refresh_pools(protocol: str):
 
     global pools
     global pool_dict
+<<<<<<< Updated upstream
 
+=======
+    if protocol == CURVE:
+        pools[protocol]['pools'] = await collect_curve_pools()
+        return
+    elif protocol == BALANCER_V1:
+        raw_balancer_pools = await collect_balancer_pools()
+        reformatted_balancer_pools = reformat_balancer_pools(raw_balancer_pools)
+        pools[protocol]['pools'] = reformatted_balancer_pools
+        return
+>>>>>>> Stashed changes
     # get the latest pool data
     new_pools = []
     metric_to_use = pools[protocol]['metric']
@@ -105,6 +134,7 @@ def flatten_dict(pool_dict):
 
 flattened_list = flatten_dict(pool_dict)
 '''
+
 
 # filter the pools for the query
 
@@ -183,8 +213,12 @@ async def route_orders(sell_symbol: str, sell_ID: str, sell_amount: float, buy_s
         result['routes'] = final_route
     else:
         result['routes'] = routes[:MAX_ROUTES]
+<<<<<<< Updated upstream
     # append the routes to the result and return
     '''# save routes to file
     with open('routes.json', 'w') as f:
         json.dump(routes, f)'''
     return result
+=======
+    return result
+>>>>>>> Stashed changes

@@ -26,8 +26,15 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
                 protocol = G.nodes[pool]['pool']['protocol']
                 print(pool)
                 print(f'swap {swap_number}')
+
+                if protocol == 'Balancer_V1':
+                    price_impact_function = constant_mean_price_impact
+                else:
+                    price_impact_function = xyk_price_impact
+
                 if pool == path[0]:
                     # get the price impact calculator values
+<<<<<<< Updated upstream
                     if G.nodes[pool]['pool']['protocol'] == 'Balancer_V1':
                         values = constant_mean_price_impact(
                             G.nodes[pool]['pool'], sell_symbol, sell_amount)
@@ -35,6 +42,12 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
                         values = xyk_price_impact(
                                 G.nodes[pool]['pool'], sell_symbol, sell_amount)
                     # {'actual_return': actual_return, 'price_impact': price_impact, 'buy_symbol': pool[f'token{buy_token}']['symbol'], 'description': description}
+=======
+                    print(f'using price impact function {price_impact_function.__name__}')
+                    values = price_impact_function(
+                        G.nodes[pool]['pool'], sell_symbol, sell_amount)
+                    print(values)
+>>>>>>> Stashed changes
                     output_symbol = values['buy_symbol']
                     output_amount = values['actual_return']
                     price_impact = values['price_impact']
@@ -61,6 +74,7 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
                 else:
                     input_amount = output_amount
                     old_input_symbol = output_symbol
+<<<<<<< Updated upstream
                     if G.nodes[pool]['pool']['protocol'] == 'Balancer_V1':
                         values = constant_mean_price_impact(
                             G.nodes[pool]['pool'], output_symbol, output_amount)
@@ -68,6 +82,12 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
                         values = xyk_price_impact(
                                 G.nodes[pool]['pool'], output_symbol, output_amount)
                     # {'actual_return': actual_return, 'price_impact': price_impact, 'buy_symbol': pool[f'token{buy_token}']['symbol'], 'description': description}
+=======
+                    print(f'using price impact function {price_impact_function.__name__}')
+                    values = price_impact_function(
+                        G.nodes[pool]['pool'], output_symbol, output_amount)
+                    print(values)
+>>>>>>> Stashed changes
                     output_symbol = values['buy_symbol']
                     output_amount = values['actual_return']
                     price_impact = values['price_impact']
@@ -104,17 +124,22 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
             # del routes[f'route_{count}']
             continue
 
-    # sort routes by amount out
+        # sort routes by amount out
     routes = sorted(
         routes.items(), key=lambda item: item[1]['amount_out'], reverse=True)
     return routes
 
+    # sort routes by amount out
+    routes = sorted(
+        routes.items(), key=lambda item: item[1]['amount_out'], reverse=True)
+    return routes
 
 def get_sub_route(g, path: dict, new_sell_amount: float, sell_symbol: str, p: float, gas_fee: float):
     route = {'percent': p}
     swap_no = 0
     for pool in path:
         protocol = g.nodes[pool]['pool']['protocol']
+<<<<<<< Updated upstream
         if pool == path[0]:
             # get the price impact calculator values
             if G.nodes[pool]['pool']['protocol'] == 'Balancer_V1':
@@ -124,6 +149,15 @@ def get_sub_route(g, path: dict, new_sell_amount: float, sell_symbol: str, p: fl
                 values = xyk_price_impact(
                         g.nodes[pool]['pool'], sell_symbol, new_sell_amount)
             # {'actual_return': actual_return, 'price_impact': price_impact, 'buy_symbol': pool[f'token{buy_token}']['symbol'], 'description': description}
+=======
+        dangerous = g.nodes[pool]['pool']['dangerous']
+        price_impact_function = constant_mean_price_impact if protocol == 'Balancer_V1' else xyk_price_impact
+
+        if pool == path[0]:
+            # get the price impact calculator values
+            values = price_impact_function(
+                g.nodes[pool]['pool'], sell_symbol, new_sell_amount)
+>>>>>>> Stashed changes
             output_symbol = values['buy_symbol']
             output_amount = values['actual_return']
             price_impact = values['price_impact']
@@ -146,6 +180,7 @@ def get_sub_route(g, path: dict, new_sell_amount: float, sell_symbol: str, p: fl
         else:
             input_amount = output_amount
             old_input_symbol = output_symbol
+<<<<<<< Updated upstream
             if G.nodes[pool]['pool']['protocol'] == 'Balancer_V1':
                 values = constant_mean_price_impact(
                         g.nodes[pool]['pool'], output_symbol, output_amount)
@@ -153,6 +188,10 @@ def get_sub_route(g, path: dict, new_sell_amount: float, sell_symbol: str, p: fl
                 values = xyk_price_impact(
                         g.nodes[pool]['pool'], output_symbol, output_amount)
             # {'actual_return': actual_return, 'price_impact': price_impact, 'buy_symbol': pool[f'token{buy_token}']['symbol'], 'description': description}
+=======
+            values = price_impact_function(
+                g.nodes[pool]['pool'], output_symbol, output_amount)
+>>>>>>> Stashed changes
             output_symbol = values['buy_symbol']
             output_amount = values['actual_return']
             price_impact = values['price_impact']
@@ -213,5 +252,10 @@ def get_final_route(g, routes: dict, sell_amount: float, sell_symbol: str) -> li
     final_route['price'] = sell_amount/final_route['output_amount']
     final_route['price_impact'] = sum(
         [route[f'swap_{len(route)-2}']['price_impact'] for route in routes]) / (len(final_route) - 3)
+<<<<<<< Updated upstream
     print(json.dumps(final_route, indent=4))
     return final_route
+=======
+    # print(json.dumps(final_route, indent=4))
+    return final_route
+>>>>>>> Stashed changes
