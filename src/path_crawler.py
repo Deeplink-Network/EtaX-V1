@@ -3,7 +3,7 @@ This module is used to traverse the paths and calculate the price impact at each
 '''
 
 # local imports
-from price_impact_calculator import xyk_price_impact, get_max_amount_for_impact_limit
+from price_impact_calculator import xyk_price_impact, get_max_amount_for_impact_limit, constant_mean_price_impact
 from gas_fee_estimator import get_gas_fee_in_eth
 # standard library imports
 import networkx as nx
@@ -18,18 +18,25 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
     count = 0
     routes = {}
     for path in paths:
-        print(f'path {count}')
+        # print(f'path {count}')
         try:
             swap_number = 0
             for pool in path:
                 protocol = G.nodes[pool]['pool']['protocol']
                 dangerous = G.nodes[pool]['pool']['dangerous']
-                print(f'swap {swap_number}')
+                # print(f'swap {swap_number}')
+
+                if protocol == 'Balancer_V1':
+                    price_impact_function = constant_mean_price_impact
+                else:
+                    price_impact_function = xyk_price_impact
+
                 if pool == path[0]:
                     # get the price impact calculator values
-                    values = xyk_price_impact(
+                    print(f'using price impact function {price_impact_function.__name__}')
+                    values = price_impact_function(
                         G.nodes[pool]['pool'], sell_symbol, sell_amount)
-                    # {'actual_return': actual_return, 'price_impact': price_impact, 'buy_symbol': pool[f'token{buy_token}']['symbol'], 'description': description}
+                    # print(values)
                     output_symbol = values['buy_symbol']
                     output_amount = values['actual_return']
                     price_impact = values['price_impact']
@@ -56,9 +63,10 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
                 else:
                     input_amount = output_amount
                     old_input_symbol = output_symbol
-                    values = xyk_price_impact(
+                    print(f'using price impact function {price_impact_function.__name__}')
+                    values = price_impact_function(
                         G.nodes[pool]['pool'], output_symbol, output_amount)
-                    # {'actual_return': actual_return, 'price_impact': price_impact, 'buy_symbol': pool[f'token{buy_token}']['symbol'], 'description': description}
+                    # print(values)
                     output_symbol = values['buy_symbol']
                     output_amount = values['actual_return']
                     price_impact = values['price_impact']
@@ -91,15 +99,15 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
             routes[f'route_{count}']['price_impact'] = sum(
                 [routes[f'route_{count}'][f'swap_{i}']['price_impact'] for i in range(swap_number)])
             count += 1
-            print('------------------------------------------------------------')
+            # print('------------------------------------------------------------')
         except Exception as e:
             # redundant error check, delete the route if it doesn't work
             if f'route_{count}' in routes:
                 del routes[f'route_{count}']
-            print(e)
+            # print(e)
             continue
 
-    # sort routes by amount out
+        # sort routes by amount out
     routes = sorted(
         routes.items(), key=lambda item: item[1]['amount_out'], reverse=True)
     return routes
@@ -111,11 +119,12 @@ def get_sub_route(g, path: dict, new_sell_amount: float, sell_symbol: str, p: fl
     for pool in path:
         protocol = g.nodes[pool]['pool']['protocol']
         dangerous = g.nodes[pool]['pool']['dangerous']
+        price_impact_function = constant_mean_price_impact if protocol == 'Balancer_V1' else xyk_price_impact
+
         if pool == path[0]:
             # get the price impact calculator values
-            values = xyk_price_impact(
+            values = price_impact_function(
                 g.nodes[pool]['pool'], sell_symbol, new_sell_amount)
-            # {'actual_return': actual_return, 'price_impact': price_impact, 'buy_symbol': pool[f'token{buy_token}']['symbol'], 'description': description}
             output_symbol = values['buy_symbol']
             output_amount = values['actual_return']
             price_impact = values['price_impact']
@@ -138,9 +147,8 @@ def get_sub_route(g, path: dict, new_sell_amount: float, sell_symbol: str, p: fl
         else:
             input_amount = output_amount
             old_input_symbol = output_symbol
-            values = xyk_price_impact(
+            values = price_impact_function(
                 g.nodes[pool]['pool'], output_symbol, output_amount)
-            # {'actual_return': actual_return, 'price_impact': price_impact, 'buy_symbol': pool[f'token{buy_token}']['symbol'], 'description': description}
             output_symbol = values['buy_symbol']
             output_amount = values['actual_return']
             price_impact = values['price_impact']

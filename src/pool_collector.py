@@ -2,7 +2,7 @@
 This file contains the functions to get the top X pools for a given token pair.
 '''
 
-from constants import UNISWAP_V2, UNISWAP_V3, SUSHISWAP_V2, CURVE
+from constants import UNISWAP_V2, UNISWAP_V3, SUSHISWAP_V2, CURVE, BALANCER_V2
 
 # standard library imports
 import asyncio
@@ -28,6 +28,7 @@ UNISWAPV2_ENDPOINT = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2
 UNISWAPV3_ENDPOINT = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3"
 SUSHISWAPV2_ENDPOINT = "https://api.thegraph.com/subgraphs/name/sushi-v2/sushiswap-ethereum"
 CURVE_ENDPOINT = "https://api.curve.fi/api/getPools/ethereum/main"
+BALANCER_V2_ENDPOINT = "https://api.thegraph.com/subgraphs/name/balancer-labs/balancer"
 
 # get the top X pools by reserveUSD where token0 = tokenA and token1 = tokenB
 
@@ -211,8 +212,95 @@ def uniswap_v3_query(X: int, skip: int, max_metric: float):
         }}
         }}
         """
+    
+
+def balancer_v2_query(X: int, skip: int, max_metric: float):
+    if not max_metric:
+        return f"""
+        {{
+        pools(first: {X}, orderBy: liquidity, orderDirection: desc, skip: {skip}) {{
+            id
+            liquidity
+            swapFee
+            tokensList
+            tokens(orderBy: address) {{
+                address
+                balance
+                symbol
+                denormWeight
+            }}
+            }}
+        }}
+        """
+    else:
+        return f"""
+        {{
+        pools(first: {X}, orderBy: liquidity, orderDirection: desc, skip: {skip}, where: {{liquidity_lt: {max_metric}}}) {{
+            id
+            liquidity
+            swapFee
+            tokensList
+            tokens(orderBy: address) {{
+                address
+                balance
+                symbol
+                denormWeight
+            }}
+            }}
+        }}
+        """
+        
+# reformat balancer helper function
+def reformat_balancer_pools(pool_list):
+    ''' Reformats a list of balancer pools into the uniswap/sushiswap format. '''
+    # Define a helper function to reformat a single pool
+    def reformat_pool(pool):
+        # Get all combinations of two tokens in the balancer pool
+        token_combinations = list(combinations(pool['tokens'], 2))
+
+        # Initialize a list to hold the dictionaries for each uniswap pool
+        reformatted_pools = []
+
+        # Iterate over each token combination and create a corresponding uniswap pool dictionary
+        for combination in token_combinations:
+            token0 = combination[0]
+            token1 = combination[1]
+            new_pair = {
+                'id': pool['id'],
+                'liquidity': pool['liquidity'],
+                'swapFee': pool['swapFee'],
+                'reserve0': token0['balance'],
+                'reserve1': token1['balance'],
+                'token0': {
+                    'id': token0['address'],
+                    'symbol': token0['symbol'],
+                    'denormWeight': token0['denormWeight']
+                },
+                'token1': {
+                    'id': token1['address'],
+                    'symbol': token1['symbol'],
+                    'denormWeight': token1['denormWeight']
+                },
+                'protocol': 'Balancer_V2',
+            }
+
+            reformatted_pools.append(new_pair)
+            new_pair['dangerous'] = new_pair['token0']['symbol'] in BAD_TOKEN_SYMS or new_pair['token1']['symbol'] in BAD_TOKEN_SYMS
+        return reformatted_pools
+
+    # Initialize a list to hold all reformatted pools
+    all_reformatted_pools = []
+
+    # Iterate over each pool and reformat it
+    for pool in pool_list:
+        reformatted_pools = reformat_pool(pool)
+        all_reformatted_pools.extend(reformatted_pools)
+
+    return all_reformatted_pools
+
 
 async def collect_curve_pools():
+    print('collecting data from curve...')
     res = []
     async with aiohttp.ClientSession() as session:
         async with session.get(CURVE_ENDPOINT) as response:
@@ -222,7 +310,7 @@ async def collect_curve_pools():
             for pool in data:
                 pairs = combinations(pool['coins'], 2)
                 for pair in pairs:
-                    print(f"pool: {pool.get('name', 'NONE')}, pair: {pair[0]['symbol']}-{pair[1]['symbol']}")
+                    # print(f"pool: {pool.get('name', 'NONE')}, pair: {pair[0]['symbol']}-{pair[1]['symbol']}")
 
                     decimals0 = int(pair[0]['decimals'])
                     decimals1 = int(pair[1]['decimals'])
@@ -267,11 +355,18 @@ async def get_latest_pool_data(protocol: str, X: int = 1000, skip: int = 0, max_
         endpoint = UNISWAPV3_ENDPOINT
         print('collecting data from Uniswap V3...')
         data_field = 'pools'
+    
+    elif protocol == BALANCER_V2:
+        endpoint = BALANCER_V2_ENDPOINT
+        print('collecting data from Balancer V2...')
+        data_field = 'pools'
 
     while True:
         try:
             if protocol == UNISWAP_V3:
                 query = uniswap_v3_query(X, skip, max_metric)
+            elif protocol == BALANCER_V2:
+                query = balancer_v2_query(X, skip, max_metric)
             else:
                 if not max_metric:
                     query = f"""
@@ -320,6 +415,8 @@ async def get_latest_pool_data(protocol: str, X: int = 1000, skip: int = 0, max_
                         }}
                     }}
                     """
+                    
+            # print(query)
 
             async with aiohttp.ClientSession() as session:
                 async with session.post(endpoint, json={'query': query}) as response:
@@ -328,7 +425,8 @@ async def get_latest_pool_data(protocol: str, X: int = 1000, skip: int = 0, max_
 
                     # assign protocol name to each pool
                     for pool in pools:
-                        pool['dangerous'] = pool['token0']['symbol'] in BAD_TOKEN_SYMS or pool['token1']['symbol'] in BAD_TOKEN_SYMS
+                        pool['dangerous'] = False
+                        # pool['token0']['symbol'] in BAD_TOKEN_SYMS or pool['token1']['symbol'] in BAD_TOKEN_SYMS
                         pool['protocol'] = protocol
                         if protocol == UNISWAP_V3:
                             if pool['sqrtPrice'] == '0':
@@ -358,7 +456,7 @@ async def get_latest_pool_data(protocol: str, X: int = 1000, skip: int = 0, max_
 
         # this sometimes fails but works on the next try, retry until it works
         except KeyError as e:
-            print(e)
+            # print(e)
             continue
 
         except asyncio.exceptions.TimeoutError as e:
@@ -371,8 +469,6 @@ async def get_latest_pool_data(protocol: str, X: int = 1000, skip: int = 0, max_
             continue
 
 # get the top X pools by reserveUSD where token0 != symbol_A and token1 != symbol_B
-
-
 async def get_pool_permutations(symbol_A: str, ID_A: str, symbol_B: str, ID_B: str, X: int = 100) -> dict:
     # if the ID is not provided, find it
     if ID_A == None or ID_B == None:
@@ -426,7 +522,7 @@ async def main():
     # get the list of pools
     pools = await get_pool_permutations(tokens[0], tokens[1], X)
     # print the list of pools
-    print(pools)
+    # print(pools)
 
 if __name__ == '__main__':
     # only need this if running on windows

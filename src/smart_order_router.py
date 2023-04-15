@@ -3,13 +3,13 @@ This module contains the main function for the smart order router, calling all t
 '''
 
 # local imports
-from pool_collector import get_latest_pool_data, get_pool_permutations, collect_curve_pools
+from pool_collector import get_latest_pool_data, get_pool_permutations, collect_curve_pools, reformat_balancer_pools
 from graph_constructor import construct_pool_graph, pool_graph_to_dict
 from pathfinder import find_shortest_paths, validate_all_paths, create_path_graph, path_graph_to_dict
 from path_crawler import calculate_routes, get_final_route
 # third party imports
 import logging
-from constants import UNISWAP_V2, UNISWAP_V3, SUSHISWAP_V2, CURVE, MAX_ROUTES
+from constants import UNISWAP_V2, UNISWAP_V3, SUSHISWAP_V2, CURVE, BALANCER_V2, MAX_ROUTES
 from heapq import merge
 import json
 
@@ -19,14 +19,16 @@ DEX_LIST = (
     UNISWAP_V2,
     UNISWAP_V3,
     SUSHISWAP_V2,
-    CURVE
+    CURVE,
+    BALANCER_V2
 )
 
 DEX_METRIC_MAP = {
     UNISWAP_V2: 'reserveUSD',
     UNISWAP_V3: 'totalValueLockedUSD',
     SUSHISWAP_V2: 'liquidityUSD',
-    CURVE: 'reserveUSD'
+    CURVE: 'reserveUSD',
+    BALANCER_V2: 'liquidity'
 }
 
 BLACKLISTED_TOKENS = [
@@ -46,15 +48,17 @@ unicount = 0
 
 
 async def refresh_pools(protocol: str):
-    print('refreshing pools...')
-
-    global sushicount
-    global unicount
+    # print('refreshing pools...')
 
     global pools
     global pool_dict
+    
     if protocol == CURVE:
-        pools[protocol]['pools'] = await collect_curve_pools()
+        new_curve_pools = await collect_curve_pools()
+        for pool in new_curve_pools:
+            pool_dict[pool['id']] = pool
+            pools[protocol]['pools'].append(pool)
+        print(f'{protocol} pool count: {len([pool for pool in pools[protocol]["pools"] if pool is not None])}')
         return
     # get the latest pool data
     new_pools = []
@@ -66,14 +70,22 @@ async def refresh_pools(protocol: str):
                 f'getting pools {i*6000 + skip} to {i*6000 + skip + 1000}...')
             new_pools = await get_latest_pool_data(protocol=protocol, skip=skip, max_metric=last_pool_metric)
             if new_pools:
-                pools[protocol]['pools'][i*6000 + skip: i *
-                                         6000 + skip + len(new_pools)] = new_pools
-                print(len(pool_dict))
+                if protocol == BALANCER_V2:
+                    new_balancer_pools = reformat_balancer_pools(new_pools)
+                    for pool in new_balancer_pools:
+                        pool_dict[pool['id']] = pool
+                        pools[protocol]['pools'].append(pool)  # Add this line
+                else:
+                    for pool in new_pools:
+                        pool_dict[pool['id']] = pool
+                        pools[protocol]['pools'].append(pool)  # Add this line
+
+                print("total pools collected:"+str(len(pool_dict)))
                 last_pool = new_pools[-1]
+                # print("last_pool:", last_pool)
                 last_pool_metric = float(last_pool[metric_to_use])
-                print(f'last pool metric: {last_pool_metric} {metric_to_use}')
-                for pool in new_pools:
-                    pool_dict[pool['id']] = pool
+                # print(f'last pool metric: {last_pool_metric} {metric_to_use}')
+                print(f'{protocol} pool count: {len([pool for pool in pools[protocol]["pools"] if pool is not None])}')
 
 # filter the pools for the query
 def filter_pools(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, exchanges=None, X: int = 50) -> list:
@@ -82,8 +94,6 @@ def filter_pools(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, e
     sell_count = 0
     buy_count = 0
     min_count = 1
-
-    print(type(full_pools))
 
     for pool in full_pools:
         if not pool or exchanges is not None and pool['protocol'] not in exchanges:
@@ -110,10 +120,6 @@ def filter_pools(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, e
         logging.warning(
             f'Final buy count: {buy_count}, final sell count: {sell_count}')
         return []
-
-    print(f'sushi count: {sushicount}, uni count: {unicount}')
-
-    print(len(filtered_pools))
 
     return filtered_pools
 

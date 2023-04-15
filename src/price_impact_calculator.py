@@ -45,7 +45,7 @@ def xyk_price_impact(pool: dict, sell_symbol: str, sell_amount: float) -> dict:
             x = x/10**int(pool[f'token{sell_token}']['decimals'])
             y = y/10**int(pool[f'token{buy_token}']['decimals'])
 
-        print(x, y)
+        # print(x, y)
 
         k = x*y
 
@@ -67,67 +67,114 @@ def xyk_price_impact(pool: dict, sell_symbol: str, sell_amount: float) -> dict:
     return {'actual_return': actual_return, 'price_impact': price_impact, 'buy_symbol': pool[f'token{buy_token}']['symbol'], 'description': description}
 
 
-def get_max_amount_for_impact_limit(g, path: dict):
-    """Returns the maximum amount of sell token that can be swapped in the path without exceeding the max price impact limit.
+def constant_mean_price_impact(pool: dict, sell_symbol: str, sell_amount: float) -> dict:
+    """ Calculates the price impact for a given trade in a balancer pool. """
 
-    Starts at the end pool and calculates the amount of sell token that can be swapped without exceeding the max price impact limit. Then moves back to the start, finding how much of the sell token is needed to swap the amount calculated in the previous pool, as well as the amount of the token in that pool required to not break the price impact limit. The minimum of these two values is taken. This is repeated until the start pool is reached.
+    # NOR check that sell_token is in the pool, do not proceed if it is not
+    if sell_symbol not in [pool['token0']['symbol'], pool['token1']['symbol']]:
+        print('Sell token not accepted by pool: '+pool['id'])
+        return pool['id']
+
+    # set the token numbers for the pool
+    sell_token = 0
+    buy_token = 1
+    # check which token is the one you are trying to sell
+    # swap sell,buy token if not 0,1
+    if pool['token1']['symbol'] == sell_symbol:
+        sell_token = 1
+        buy_token = 0
+
+    # Get the balances of the tokens
+    token_balance_in = float(pool['reserve'+str(sell_token)])
+    token_balance_out = float(pool['reserve'+str(buy_token)])
+
+    # Get the weights of the tokens
+    token_weight_in = float(pool['token'+str(sell_token)]['denormWeight'])
+    token_weight_out = float(pool['token'+str(buy_token)]['denormWeight'])
+
+    # Get the swapFee
+    swap_fee = float(pool['swapFee'])
+
+    # Calculate the spot price before the swap
+    numer = float(token_balance_in) / float(token_weight_in)
+    denom = float(token_balance_out) / float(token_weight_out)
+    price_before = numer / denom * (1 / (1 - float(swap_fee)))
+
+    # Calculate the ratio of the weights
+    weight_ratio = token_weight_in / token_weight_out
+
+    # Apply the swap fee to the input token amount
+    adjusted_in = sell_amount * (1 - swap_fee)
+
+    # Calculate the relative amount of the input token in the pool
+    input_token_ratio = token_balance_in / (token_balance_in + adjusted_in)
+
+    # Calculate the output token amount based on the pool balance and the input token ratio
+    output_token_ratio = 1 - pow(input_token_ratio, weight_ratio)
+    token_amount_out = token_balance_out * output_token_ratio
+
+    # Calculate the amount of input tokens that were actually used (after the swap fee)
+    actual_input_amount = sell_amount - adjusted_in
+
+    # Calculate the updated pool balances after the swap
+    input_balance = token_balance_in + actual_input_amount
+    output_balance = token_balance_out - token_amount_out
+    
+    # Calculate the spot price after the swap
+    price_after = (input_balance / token_weight_in) / (output_balance / token_weight_out) * (1 / (1 - float(swap_fee)))
+
+    # Calculate the price impact as a percentage
+    price_impact_percentage = (price_after - price_before) / price_before * 100
+
+    description = f"""Sell {sell_amount} {sell_symbol} for {pool[f'token{buy_token}']['symbol']} in {' '.join(pool['protocol'].split('_'))} {pool['id']}
+    \nExpected return: {token_amount_out} {pool[f'token{buy_token}']['symbol']}
+    \nPrice impact: {price_impact_percentage}%
     """
 
-    pool_num = len(path)-7
+    return {'actual_return': token_amount_out, 'price_impact': price_impact_percentage, 'buy_symbol': pool[f'token{buy_token}']['symbol'], 'description': description}
+
+
+def get_max_amount_for_impact_limit(g, path: dict) -> float:
+    pool_num = len(path) - 7
     sell_amount = None
-    max_price_imp_amount = None
     next_pool_amount = 10e30
 
-    # print(json.dumps(path, indent=4))
-
     while pool_num >= 0:
-
         swap = path[f'swap_{pool_num}']
         pool = g.nodes[swap['pool']]['pool']
+        sell_symbol = swap['input_token']
 
-        # print(pool)
+        if pool['protocol'] == 'Balancer_V1':
+            price_impact_function = constant_mean_price_impact
+        else:
+            price_impact_function = xyk_price_impact
 
-        sell_token = swap['input_token']
-        buy_token = swap['output_token']
+        # Check whether sell token is token0 or token1
+        token = 1
+        if pool['token0']['symbol'] == sell_symbol:
+            token = 0
 
-        sell_token_num = 1 if pool['token1']['symbol'] == sell_token else 0
-        buy_token_num = 1 - sell_token_num
+        left = 0
+        right = float(pool[f'reserve{token}'])  # Start with the entire pool's balance as the upper limit
+        epsilon = 1e-6  # Tolerance level for binary search
 
-        # grab the expected price of the asset being purchased
-        expected_price = float(pool[f'token{sell_token_num}Price'])
+        while right - left > epsilon:
+            mid = (left + right) / 2
+            price_impact_data = price_impact_function(pool, sell_symbol, mid)
+            price_impact = price_impact_data['price_impact']
 
-        # constant product formula (xyk)
-        x = float(pool[f'reserve{sell_token_num}'])
-        y = float(pool[f'reserve{buy_token_num}'])
+            if price_impact < MAX_PRICE_IMPACT:
+                left = mid
+            else:
+                right = mid
 
-        # Sushiswap subgraph returns decimals adjusted values, so we need to adjust them back
-        if pool['protocol'] == SUSHISWAP_V2:
-            x = x/10**int(pool[f'token{sell_token_num}']['decimals'])
-            y = y/10**int(pool[f'token{buy_token_num}']['decimals'])
+        max_amount = left
+        if sell_amount is not None:
+            max_amount = min(max_amount, next_pool_amount)
 
-        if max_price_imp_amount:
-            next_pool_amount = max_price_imp_amount * expected_price
-            print(
-                f'next_pool_amount: {next_pool_amount}, based on max_price_imp_amount: {max_price_imp_amount} and expected_price: {expected_price}')
-        # mp = MAX_PRICE_IMPACT, ep = expected_price, sa = sell_amount
+        next_pool_amount = max_amount
+        sell_amount = max_amount
 
-        # actual_return / expected_return should equal 1 - MAX_PRICE_IMPACT
-
-        # => y - y_new = (1 - MAX_PRICE_IMPACT) * expected_return
-        # = (1 - MAX_PRICE_IMPACT) * (sell_amount / expected_price)
-        # => y - k / (x + sa) = (1 - mp) * sa / ep
-
-        # => k / (x + sa) = y - (1 - mp) * (sa / ep)
-        # => k = yx + y.sa - (1 - mp) * (sa / ep) * (x + sa)
-        # k cancels out, set MP = (1 - mp)
-        # => y.sa - MP(sa.x + sa^2) / ep = 0
-        # => sa^2 + (x - y.ep/MP)sa = 0
-        # => sa(sa + (x - y.ep/MP)) = 0
-        # sa = -(x - y.ep/MP)
-
-        max_price_imp_amount = - \
-            (x - (y * expected_price) / (1 - MAX_PRICE_IMPACT))
-        sell_amount = min(max_price_imp_amount, next_pool_amount)
-        print(sell_amount)
         pool_num -= 1
+
     return sell_amount
