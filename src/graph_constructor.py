@@ -24,6 +24,8 @@ def construct_pool_graph(pools: json) -> nx.classes.graph.Graph:
             metric = pool['liquidityUSD']
         elif 'totalValueLockedUSD' in pool:
             metric = pool['totalValueLockedUSD']
+        elif 'liquidity' in pool:
+            metric = pool['liquidity']
         # make the node SYMBOL1_SYMBOL2_ID
         G.add_node(
             pool['token0']['symbol'] + '_' + pool['token1']['symbol'] + '_' + pool['id'], id=pool['id'], 

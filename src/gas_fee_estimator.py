@@ -13,8 +13,12 @@ if os.path.exists(".env"):
     dotenv.load_dotenv(".env")
 
 # use a .env file to store and retrieve your infura key
+# use a .env file to store and retrieve your infura key
 INFURA_KEY = os.getenv("ETAX_INFURA_KEY", default=None)
+INFURA_KEY = INFURA_KEY.strip('"') if INFURA_KEY else None
+
 INFURA_SECRET = os.getenv("ETAX_INFURA_SECRET", default=None)
+INFURA_SECRET = INFURA_SECRET.strip('"') if INFURA_SECRET else None
 
 if not INFURA_KEY:
     print("Please provide an infura key as an environment variable.")

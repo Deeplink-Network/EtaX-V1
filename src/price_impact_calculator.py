@@ -144,7 +144,7 @@ def get_max_amount_for_impact_limit(g, path: dict) -> float:
         pool = g.nodes[swap['pool']]['pool']
         sell_symbol = swap['input_token']
 
-        if pool['protocol'] == 'Balancer_V1':
+        if pool['protocol'] == 'Balancer_V2':
             price_impact_function = constant_mean_price_impact
         else:
             price_impact_function = xyk_price_impact

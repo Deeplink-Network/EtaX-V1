@@ -26,7 +26,7 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
                 dangerous = G.nodes[pool]['pool']['dangerous']
                 # print(f'swap {swap_number}')
 
-                if protocol == 'Balancer_V1':
+                if protocol == 'Balancer_V2':
                     price_impact_function = constant_mean_price_impact
                 else:
                     price_impact_function = xyk_price_impact
@@ -119,7 +119,7 @@ def get_sub_route(g, path: dict, new_sell_amount: float, sell_symbol: str, p: fl
     for pool in path:
         protocol = g.nodes[pool]['pool']['protocol']
         dangerous = g.nodes[pool]['pool']['dangerous']
-        price_impact_function = constant_mean_price_impact if protocol == 'Balancer_V1' else xyk_price_impact
+        price_impact_function = constant_mean_price_impact if protocol == 'Balancer_V2' else xyk_price_impact
 
         if pool == path[0]:
             # get the price impact calculator values

@@ -11,3 +11,8 @@ COPY src/ .
 EXPOSE 5000
 
 CMD ["gunicorn", "-b", "0.0.0.0:5000", "server:main()"]
+
+# FOR LOCAL TESTING
+# ENV FLASK_APP=server.py
+# ENV FLASK_RUN_HOST=0.0.0.0
+# CMD ["flask", "run"]
