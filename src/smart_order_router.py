@@ -133,7 +133,7 @@ async def route_orders(sell_symbol: str, sell_ID: str, sell_amount: float, buy_s
         filt_pools = await get_pool_permutations(sell_symbol, sell_ID, buy_symbol, buy_ID)
         filt_pools = [
             pool for pool in filt_pools if pool['protocol'] in exchanges]
-    print(json.dumps(filt_pools, indent=4))
+    # print(json.dumps(filt_pools, indent=4))
     # construct the pool graph
     G = construct_pool_graph(filt_pools)
     # get the graph dict

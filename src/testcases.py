@@ -7,36 +7,20 @@ from pool_collector import get_latest_pool_data, get_pool_permutations, collect_
 from graph_constructor import construct_pool_graph, pool_graph_to_dict
 from pathfinder import find_shortest_paths, validate_all_paths, create_path_graph, path_graph_to_dict
 from path_crawler import calculate_routes, get_final_route
-from gas_fee_estimator import get_gas_fee_in_eth
-# third party imports
+from smart_order_router import refresh_pools, DEX_LIST, DEX_METRIC_MAP, BLACKLISTED_TOKENS, pool_dict, pools
 import logging
 from constants import UNISWAP_V2, UNISWAP_V3, SUSHISWAP_V2, CURVE, BALANCER_V2, MAX_ROUTES
 from heapq import merge
 import json
 import asyncio
-import os
-import sys
-
-# use a .env file to store and retrieve your infura key
-INFURA_KEY = os.getenv("ETAX_INFURA_KEY", default=None)
-INFURA_KEY = INFURA_KEY.strip('"') if INFURA_KEY else None
-
-INFURA_SECRET = os.getenv("ETAX_INFURA_SECRET", default=None)
-INFURA_SECRET = INFURA_SECRET.strip('"') if INFURA_SECRET else None
-
-if not INFURA_KEY:
-    print("Please provide an infura key as an environment variable.")
-    sys.exit()
-
-print(get_gas_fee_in_eth())
 
 MAX_ORDERS = 20
 
 DEX_LIST = (
-    UNISWAP_V2,
-    UNISWAP_V3,
-    SUSHISWAP_V2,
     CURVE,
+    UNISWAP_V3,
+    UNISWAP_V2,
+    SUSHISWAP_V2,
     BALANCER_V2
 )
 
@@ -60,9 +44,6 @@ pools = {
         'pools': [None] * 10_000
     } for exch in DEX_LIST
 }
-sushicount = 0
-unicount = 0
-
 
 async def refresh_pools(protocol: str):
     # print('refreshing pools...')
@@ -77,6 +58,7 @@ async def refresh_pools(protocol: str):
             pools[protocol]['pools'].append(pool)
         print(f'{protocol} pool count: {len([pool for pool in pools[protocol]["pools"] if pool is not None])}')
         return
+    
     # get the latest pool data
     new_pools = []
     metric_to_use = pools[protocol]['metric']
@@ -104,8 +86,11 @@ async def refresh_pools(protocol: str):
                 # print(f'last pool metric: {last_pool_metric} {metric_to_use}')
                 print(f'{protocol} pool count: {len([pool for pool in pools[protocol]["pools"] if pool is not None])}')
 
+
 # filter the pools for the query
 def filter_pools(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, exchanges=None, X: int = 50) -> list:
+    if exchanges is None:
+        exchanges = DEX_LIST
     # Add this print statement
     for protocol in DEX_LIST:
         print(f"{protocol} pool count: {len([pool for pool in pools[protocol]['pools'] if pool is not None])}")
@@ -117,9 +102,12 @@ def filter_pools(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, e
     min_count = 1
 
     for pool in full_pools:
-        if not pool or exchanges is not None and pool['protocol'] not in exchanges:
-            # print(f'Skipping {pool["protocol"]}')
+        # print(f'exchanges: {exchanges}, type: {type(exchanges)}')
+        if (not pool) or (exchanges is not None and pool['protocol'] not in exchanges):
+            # if pool:
+                # print(f'{pool["protocol"]} not in {exchanges}, skipping...')
             continue
+
         if sell_count >= X and buy_count >= X:
             return filtered_pools
         if sell_ID in (pool['token0']['id'], pool['token1']['id']):
@@ -142,7 +130,12 @@ def filter_pools(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, e
             f'Final buy count: {buy_count}, final sell count: {sell_count}')
         return []
 
+    # print the number of protocols in the filtered pools
+    protocols = set([pool['protocol'] for pool in filtered_pools])
+    print(f'protocols in filtered pools: {protocols}')
+
     return filtered_pools
+
 
 async def route_orders(sell_symbol: str, sell_ID: str, sell_amount: float, buy_symbol: str, buy_ID: str, exchanges, split=False) -> dict:
     result = {}
@@ -154,7 +147,7 @@ async def route_orders(sell_symbol: str, sell_ID: str, sell_amount: float, buy_s
         filt_pools = await get_pool_permutations(sell_symbol, sell_ID, buy_symbol, buy_ID)
         filt_pools = [
             pool for pool in filt_pools if pool['protocol'] in exchanges]
-    print(json.dumps(filt_pools, indent=4))
+    # print(json.dumps(filt_pools, indent=4))
     # construct the pool graph
     G = construct_pool_graph(filt_pools)
     # get the graph dict
@@ -181,14 +174,25 @@ async def route_orders(sell_symbol: str, sell_ID: str, sell_amount: float, buy_s
         result['routes'] = routes[:MAX_ROUTES]
     return result
 
+
 async def main():
     # get the latest pool data 
     print("testing collection, getting latest pool data...")
-    for protocol in DEX_LIST:
-        await refresh_pools(protocol)
+
+    refresh_tasks = [refresh_pools(dex) for dex in DEX_LIST]
+    try:
+        await asyncio.gather(*refresh_tasks)
+    except KeyboardInterrupt:
+        for task in asyncio.all_tasks():
+            if task is not asyncio.current_task():
+                task.cancel()
+        await asyncio.gather(*asyncio.all_tasks(), return_exceptions=True)
+
     # save the pool data
-    with open('test_results\\pools.json', 'w') as f:
+    with open('test_results\\pool_dict.json', 'w') as f:
         json.dump(pool_dict, f)
+    with open('test_results\\pools.json', 'w') as f:
+        json.dump(pools, f)
     
     # filter for:
     sell_id = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
@@ -196,19 +200,19 @@ async def main():
     buy_id = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
     buy_symbol = 'USDC'
 
-    print(f"testing filtering for {sell_symbol} -> {buy_symbol}... on {BALANCER_V2}")
-    filtered_pools = filter_pools(sell_symbol, sell_id, buy_symbol, buy_id, exchanges=BALANCER_V2)
+    print(f"testing filtering for {sell_symbol} -> {buy_symbol}... on {DEX_LIST}")
+    filtered_pools = filter_pools(sell_symbol, sell_id, buy_symbol, buy_id, exchanges=[UNISWAP_V3, UNISWAP_V2, SUSHISWAP_V2, CURVE, BALANCER_V2])
     # save the filtered pools
     with open('test_results\\filtered_pools.json', 'w') as f:
         json.dump(filtered_pools, f)
 
-    print(f"testing routing for {sell_symbol} -> {buy_symbol}... on {BALANCER_V2}")
+    print(f"testing routing for {sell_symbol} -> {buy_symbol}... on {DEX_LIST}")
     # test route orders with the same parameters
-    routes = await route_orders(sell_symbol, sell_id, 10, buy_symbol, buy_id, exchanges=BALANCER_V2, split=False)
+    routes = await route_orders(sell_symbol, sell_id, 1000, buy_symbol, buy_id, exchanges=[UNISWAP_V3, UNISWAP_V2, SUSHISWAP_V2, CURVE, BALANCER_V2], split=False)
 
-    print(f"testing splitting for {sell_symbol} -> {buy_symbol}... on {BALANCER_V2}")
+    print(f"testing splitting for {sell_symbol} -> {buy_symbol}... on {DEX_LIST}")
     # test route orders with the same parameters
-    split_routes = await route_orders(sell_symbol, sell_id, 10, buy_symbol, buy_id, exchanges=BALANCER_V2, split=True)
+    split_routes = await route_orders(sell_symbol, sell_id, 1000, buy_symbol, buy_id, exchanges=[UNISWAP_V3, UNISWAP_V2, SUSHISWAP_V2, CURVE, BALANCER_V2], split=True)
 
     # save the routes
     with open('test_results\\routes.json', 'w') as f:
@@ -218,11 +222,17 @@ async def main():
     with open('test_results\\split_routes.json', 'w') as f:
         json.dump(split_routes, f)
 
-    '''# test for balancer only
-    print(f"testing routing for {sell_symbol} -> {buy_symbol}... on balancer")
-    routes = await route_orders(sell_symbol, sell_id, 1, buy_symbol, buy_id, exchanges=BALANCER_V2, split=False)
+    # test for balancer only
+    print(f"testing filtering for {sell_symbol} -> {buy_symbol}... on {BALANCER_V2}")
+    filtered_pools = filter_pools(sell_symbol, sell_id, buy_symbol, buy_id, exchanges=BALANCER_V2)
+    # save the filtered pools
+    with open('test_results\\balancer_filtered_pools.json', 'w') as f:
+        json.dump(filtered_pools, f)
 
-    print(f"testing splitting for {sell_symbol} -> {buy_symbol}... on balancer")
+    print(f"testing routing for {sell_symbol} -> {buy_symbol}... on {BALANCER_V2}")
+    routes = await route_orders(sell_symbol, sell_id, 100, buy_symbol, buy_id, exchanges=BALANCER_V2, split=False)
+
+    print(f"testing splitting for {sell_symbol} -> {buy_symbol}... on {BALANCER_V2}")
     split_routes = await route_orders(sell_symbol, sell_id, 1, buy_symbol, buy_id, exchanges=BALANCER_V2, split=True)
 
     # save the routes
@@ -231,7 +241,7 @@ async def main():
 
     # save the split routes 
     with open('test_results\\balancer_split_routes.json', 'w') as f:
-        json.dump(split_routes, f)'''
+        json.dump(split_routes, f)
     
 
 if __name__ == '__main__':
