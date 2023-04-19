@@ -152,6 +152,9 @@ async def route_orders(sell_symbol: str, sell_ID: str, sell_amount: float, buy_s
     G = construct_pool_graph(filt_pools)
     # get the graph dict
     graph_dict = pool_graph_to_dict(G)
+    # save the graph dict to test results
+    with open('test_results/graph_dict.json', 'w') as f:
+        json.dump(graph_dict, f)
     # append the dict to the result
     result['pool_graph'] = graph_dict
     # find the shortest paths
@@ -197,10 +200,10 @@ async def main():
     # filter for:
     sell_id = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
     sell_symbol = 'WETH'
-    buy_id = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
-    buy_symbol = 'USDC'
+    buy_id = '0x6b175474e89094c44da98b954eedeac495271d0f'
+    buy_symbol = 'DAI'
 
-    print(f"testing filtering for {sell_symbol} -> {buy_symbol}... on {DEX_LIST}")
+    '''print(f"testing filtering for {sell_symbol} -> {buy_symbol}... on {DEX_LIST}")
     filtered_pools = filter_pools(sell_symbol, sell_id, buy_symbol, buy_id, exchanges=[UNISWAP_V3, UNISWAP_V2, SUSHISWAP_V2, CURVE, BALANCER_V2])
     # save the filtered pools
     with open('test_results\\filtered_pools.json', 'w') as f:
@@ -220,7 +223,7 @@ async def main():
 
     # save the split routes
     with open('test_results\\split_routes.json', 'w') as f:
-        json.dump(split_routes, f)
+        json.dump(split_routes, f)'''
 
     # test for balancer only
     print(f"testing filtering for {sell_symbol} -> {buy_symbol}... on {BALANCER_V2}")
@@ -233,7 +236,7 @@ async def main():
     routes = await route_orders(sell_symbol, sell_id, 100, buy_symbol, buy_id, exchanges=BALANCER_V2, split=False)
 
     print(f"testing splitting for {sell_symbol} -> {buy_symbol}... on {BALANCER_V2}")
-    split_routes = await route_orders(sell_symbol, sell_id, 1, buy_symbol, buy_id, exchanges=BALANCER_V2, split=True)
+    split_routes = await route_orders(sell_symbol, sell_id, 10, buy_symbol, buy_id, exchanges=BALANCER_V2, split=True)
 
     # save the routes
     with open('test_results\\balancer_routes.json', 'w') as f:
