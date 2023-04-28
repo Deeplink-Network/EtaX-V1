@@ -308,33 +308,37 @@ async def collect_curve_pools():
             data = obj['data']['poolData']
             #print(json.dumps(data, indent=4))
             for pool in data:
-                pairs = combinations(pool['coins'], 2)
-                for pair in pairs:
-                    # print(f"pool: {pool.get('name', 'NONE')}, pair: {pair[0]['symbol']}-{pair[1]['symbol']}")
+                try:
+                    pairs = combinations(pool['coins'], 2)
+                    for pair in pairs:
+                        # print(f"pool: {pool.get('name', 'NONE')}, pair: {pair[0]['symbol']}-{pair[1]['symbol']}")
 
-                    decimals0 = int(pair[0]['decimals'])
-                    decimals1 = int(pair[1]['decimals'])
+                        decimals0 = int(pair[0]['decimals'])
+                        decimals1 = int(pair[1]['decimals'])
 
-                    new_pair = {}
-                    new_pair['id'] = pool['address'].lower()
-                    new_pair['reserve0'] = int(pair[0]['poolBalance']) / 10**decimals0
-                    new_pair['reserve1'] = int(pair[1]['poolBalance']) / 10**decimals1
-                    new_pair['token0'] = {
-                        'id': pair[0]['address'].lower(),
-                        'symbol': pair[0]['symbol'],
-                        'decimals': decimals0
-                    }
-                    new_pair['token1'] = {
-                        'id': pair[1]['address'].lower(),
-                        'symbol': pair[1]['symbol'],
-                        'decimals': decimals1
-                    }
-                    new_pair['token0Price'] = pair[1]['usdPrice'] / pair[0]['usdPrice']
-                    new_pair['token1Price'] = pair[0]['usdPrice'] / pair[1]['usdPrice']
-                    new_pair['reserveUSD'] = new_pair['reserve0'] * pair[0]['usdPrice'] + new_pair['reserve1'] * pair[1]['usdPrice']
-                    new_pair['protocol'] = CURVE
-                    new_pair['dangerous'] = new_pair['token0']['symbol'] in BAD_TOKEN_SYMS or new_pair['token1']['symbol'] in BAD_TOKEN_SYMS
-                    res.append(new_pair)
+                        new_pair = {}
+                        new_pair['id'] = pool['address'].lower()
+                        new_pair['reserve0'] = int(pair[0]['poolBalance']) / 10**decimals0
+                        new_pair['reserve1'] = int(pair[1]['poolBalance']) / 10**decimals1
+                        new_pair['token0'] = {
+                            'id': pair[0]['address'].lower(),
+                            'symbol': pair[0]['symbol'],
+                            'decimals': decimals0
+                        }
+                        new_pair['token1'] = {
+                            'id': pair[1]['address'].lower(),
+                            'symbol': pair[1]['symbol'],
+                            'decimals': decimals1
+                        }
+                        new_pair['token0Price'] = pair[1]['usdPrice'] / pair[0]['usdPrice']
+                        new_pair['token1Price'] = pair[0]['usdPrice'] / pair[1]['usdPrice']
+                        new_pair['reserveUSD'] = new_pair['reserve0'] * pair[0]['usdPrice'] + new_pair['reserve1'] * pair[1]['usdPrice']
+                        new_pair['protocol'] = CURVE
+                        new_pair['dangerous'] = new_pair['token0']['symbol'] in BAD_TOKEN_SYMS or new_pair['token1']['symbol'] in BAD_TOKEN_SYMS
+                        res.append(new_pair)
+                except Exception as e:
+                    print(f"Error collecting curve data: {e}")
+                    continue
     return res
 
 async def get_latest_pool_data(protocol: str, X: int = 1000, skip: int = 0, max_metric: float = None) -> dict:
