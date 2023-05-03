@@ -3,24 +3,27 @@ This module contains the main function for the smart order router, calling all t
 '''
 
 # local imports
-from pool_collector import get_latest_pool_data, get_pool_permutations, collect_curve_pools, reformat_balancer_pools
+from pool_collector import get_latest_pool_data, collect_curve_pools, reformat_balancer_pools
 from graph_constructor import construct_pool_graph, pool_graph_to_dict
 from pathfinder import find_shortest_paths, validate_all_paths, create_path_graph, path_graph_to_dict
 from path_crawler import calculate_routes, get_final_route
 # third party imports
 import logging
-from constants import UNISWAP_V2, UNISWAP_V3, SUSHISWAP_V2, CURVE, BALANCER_V2, MAX_ROUTES
+from constants import UNISWAP_V2, UNISWAP_V3, SUSHISWAP_V2, CURVE, BALANCER_V2, DODO, PANCAKESWAP_V3, MAX_ROUTES
 from heapq import merge
 import json
+import time
 
 MAX_ORDERS = 20
 
 DEX_LIST = (
-    UNISWAP_V2,
-    UNISWAP_V3,
-    SUSHISWAP_V2,
+    #UNISWAP_V2,
+    #UNISWAP_V3,
+    #SUSHISWAP_V2,
     CURVE,
-    BALANCER_V2
+    BALANCER_V2,
+    #DODO,
+    #PANCAKESWAP_V3
 )
 
 DEX_METRIC_MAP = {
@@ -28,7 +31,9 @@ DEX_METRIC_MAP = {
     UNISWAP_V3: 'totalValueLockedUSD',
     SUSHISWAP_V2: 'liquidityUSD',
     CURVE: 'reserveUSD',
-    BALANCER_V2: 'liquidity'
+    BALANCER_V2: 'liquidity',
+    DODO: 'volumeUSD',
+    PANCAKESWAP_V3: 'totalValueLockedUSD'
 }
 
 BLACKLISTED_TOKENS = [
@@ -43,8 +48,6 @@ pools = {
         'pools': [None] * 10_000
     } for exch in DEX_LIST
 }
-sushicount = 0
-unicount = 0
 
 
 async def refresh_pools(protocol: str):
@@ -87,17 +90,36 @@ async def refresh_pools(protocol: str):
                 # print(f'last pool metric: {last_pool_metric} {metric_to_use}')
                 print(f'{protocol} pool count: {len([pool for pool in pools[protocol]["pools"] if pool is not None])}')
 
+
+# pool sorting helper function
+def pool_key(pool):
+    try:
+        if pool is None:
+            return 0
+        metric_key = pools[pool['protocol']]['metric']
+        return float(pool['reserveUSD']) if 'reserveUSD' in pool else float(pool[metric_key]) if pool else 0
+    except ValueError as e:
+        print(f"Error: {e}")
+        print(f"Pool causing error: {pool}")
+        print(f"reserveUSD: {pool.get('reserveUSD', 'Not Found')}")
+        print(f"Protocol: {pool.get('protocol', 'Not Found')}")
+        print(f"Metric: {pools[pool['protocol']].get('metric', 'Not Found')}")
+        return 0
+
+
 # filter the pools for the query
 def filter_pools(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, exchanges=None, X: int = 50) -> list:
     filtered_pools = []
+    # Use 'reserveUSD' if available, or the default metric from the 'pools' dictionary
+    # ideally we should probably decouple the metric for pagination and the metric for sorting
     full_pools = merge(*[pools[protocol]['pools'] for protocol in DEX_LIST], reverse=True, key=lambda x: float(x[pools[x['protocol']]['metric']]) if x else 0)
+    #full_pools = merge(*[pools[protocol]['pools'] for protocol in DEX_LIST], reverse=True, key=pool_key)
     sell_count = 0
     buy_count = 0
     min_count = 1
 
     for pool in full_pools:
         if not pool or exchanges is not None and pool['protocol'] not in exchanges:
-            # print(f'Skipping {pool["protocol"]}')
             continue
         if sell_count >= X and buy_count >= X:
             return filtered_pools
@@ -116,7 +138,7 @@ def filter_pools(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, e
             if buy_count < X and pool not in filtered_pools:
                 filtered_pools.append(pool)
     if buy_count < min_count or sell_count < min_count:
-        logging.warning('Insufficient pools cached, using old method')
+        logging.warning('Insufficient pools cached, sleeping and retrying with full DEX list...')
         logging.warning(
             f'Final buy count: {buy_count}, final sell count: {sell_count}')
         return []
@@ -126,13 +148,12 @@ def filter_pools(sell_symbol: str, sell_ID: str, buy_symbol: str, buy_ID: str, e
 async def route_orders(sell_symbol: str, sell_ID: str, sell_amount: float, buy_symbol: str, buy_ID: str, exchanges, split=False) -> dict:
     result = {}
     # get the pools
-    # pools = await get_pool_permutations(sell_symbol, sell_ID, buy_symbol, buy_ID)
     filt_pools = filter_pools(sell_symbol, sell_ID,
                               buy_symbol, buy_ID, exchanges=exchanges)
     if len(filt_pools) < 5:
-        filt_pools = await get_pool_permutations(sell_symbol, sell_ID, buy_symbol, buy_ID)
-        filt_pools = [
-            pool for pool in filt_pools if pool['protocol'] in exchanges]
+        time.sleep(5)
+        filter_pools(sell_symbol, sell_ID,
+                              buy_symbol, buy_ID, exchanges=DEX_LIST)
     # print(json.dumps(filt_pools, indent=4))
     # construct the pool graph
     G = construct_pool_graph(filt_pools)

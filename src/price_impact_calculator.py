@@ -2,14 +2,117 @@
 This script calculates the price impact of a swap in a given pool using the xyk constant product formula.
 '''
 # Max price impact for a path before the order is split
-# import json
-from constants import SUSHISWAP_V2, UNISWAP_V2, CURVE
+import json
+from constants import SUSHISWAP_V2, UNISWAP_V2, CURVE, BALANCER_V2, DODO
 import logging
+import os
+from web3 import Web3
+import requests
+import numpy as np
 
-MAX_PRICE_IMPACT = 0.10
+MAX_PRICE_IMPACT = 20
+
+KEEPER_ADDRESS = Web3.to_checksum_address('0x6c51B510C83288831aDfdC4B76F461d41b45ad07')
+
+# grab keys from environment variables
+INFURA_KEY = os.getenv("ETAX_INFURA_KEY", default=None)
+INFURA_SECRET = os.getenv("ETAX_INFURA_SECRET", default=None)
+# strip the quotes from the infura key if they exist
+INFURA_KEY = INFURA_KEY.strip('"') if INFURA_KEY else None
+INFURA_SECRET = INFURA_SECRET.strip('"') if INFURA_SECRET else None
+
+NODE_URL = 'https://mainnet.infura.io/v3/{}'.format(INFURA_KEY)
+w3 = Web3(Web3.HTTPProvider(NODE_URL))
+
+# this is a placeholder web3-based price impact retrieval method, 
+# it will be replaced with a mathematical implementation 
+def dodo_price_impact(pool: dict, sell_symbol: str, sell_amount: float) -> dict:
+    print('Calculating price impact for DODO pool: '+pool['id'])
+    # check that the sell token is accepted by the pool
+    if sell_symbol not in [pool['token0']['symbol'], pool['token1']['symbol']]:
+        print('Sell token not accepted by pool: '+pool['id'])
+        return pool['id']
+
+    # open the ABI corresponding to the pool type
+    with open(f'ABI/DODO_{pool["type"]}.json', 'r') as f:
+        ABI = json.load(f)
+
+    contract_address = Web3.to_checksum_address(pool['id'])
+
+    # create a contract object
+    contract = w3.eth.contract(address=contract_address, abi=ABI)
+
+    sell_token = 0
+    buy_token = 1
+    # check which token is the one you are trying to sell
+    # swap sell,buy token if not 0,1
+    if pool['token1']['symbol'] == sell_symbol:
+        sell_token = 1
+        buy_token = 0
+
+    try:
+        if pool['type'] == 'CLASSICAL' and sell_token == 0:
+            # querySellBaseToken
+            # print(f'querySellBaseToken({int(sell_amount*10**float(pool[f"token{sell_token}"]["decimals"]))})')
+            tokens_received = contract.functions.querySellBaseToken(
+                    int(sell_amount*10**float(pool[f'token{sell_token}']['decimals']))).call()
+
+        elif pool['type'] == 'CLASSICAL' and sell_token == 1:
+            # querySellQuoteToken
+            # print(f'querySellQuoteToken({int(sell_amount*10**float(pool[f"token{sell_token}"]["decimals"]))})')
+            tokens_received = contract.functions.queryBuyBaseToken(
+                int(sell_amount*10**float(pool[f'token{sell_token}']['decimals']))).call()
+
+        elif pool['type'] != 'CLASSICAL' and sell_token == 0:
+            # print(f'querySellBase({KEEPER_ADDRESS}, {int(sell_amount*10**float(pool[f"token{sell_token}"]["decimals"]))})')
+            # querySellBase
+            tokens_received = contract.functions.querySellBase(
+                KEEPER_ADDRESS,
+                int(sell_amount*10**float(pool[f'token{sell_token}']['decimals']))).call()
+
+        elif pool['type'] != 'CLASSICAL' and sell_token == 1:
+            # print(f'querySellQuote({KEEPER_ADDRESS}, {int(sell_amount*10**float(pool[f"token{sell_token}"]["decimals"]))})')
+            # querySellQuote
+            tokens_received = contract.functions.querySellQuote(
+                KEEPER_ADDRESS,
+                int(sell_amount*10**float(pool[f'token{sell_token}']['decimals']))).call()
+
+        if pool['type'] == 'CLASSICAL':
+            tokens_received = tokens_received / 10**float(pool[f'token{buy_token}']['decimals'])
+        else:
+            tokens_received = tokens_received[0] / 10**float(pool[f'token{buy_token}']['decimals'])
+
+        # calculate price impact as a percentage
+        initial_price = float(pool['token1Price']) if sell_symbol == pool['token0']['symbol'] else float(pool['token0Price'])
+        expected_return = sell_amount/initial_price
+        actual_return = tokens_received
+        price_impact = max(0, (1-(actual_return/expected_return))*100)
+
+        ret = {
+            'actual_return': tokens_received,
+            'price_impact': price_impact,
+            'buy_symbol': pool[f'token{buy_token}']['symbol'],
+            'description': f"Sell {sell_amount} {sell_symbol} for {pool[f'token{buy_token}']['symbol']} in DODO {pool['id']}\n"
+                        f"Expected return: {tokens_received} {pool[f'token{buy_token}']['symbol']}\n"
+                        f"Price impact: {price_impact}%"
+        }
+        print()
+        return ret
+
+
+    except ValueError as e:
+        print(f'ValueError {e}: {pool["id"]}')
+        ret = {
+            'actual_return': 0,
+            'price_impact': np.inf,
+            'buy_symbol': pool[f'token{buy_token}']['symbol'],
+            'description': f"pool {pool['id']} is not active"
+        }
+        print()
+        return ret
+
 
 # calculate the predicted price impact percentage when swapping one token for another in a given pool
-
 def xyk_price_impact(pool: dict, sell_symbol: str, sell_amount: float) -> dict:
     # NOR check that sell_token is in the pool, do not proceed if it is not
     if sell_symbol not in [pool['token0']['symbol'], pool['token1']['symbol']]:
@@ -143,9 +246,15 @@ def get_max_amount_for_impact_limit(g, path: dict) -> float:
         swap = path[f'swap_{pool_num}']
         pool = g.nodes[swap['pool']]['pool']
         sell_symbol = swap['input_token']
+        buy_symbol = swap['output_token']
 
-        if pool['protocol'] == 'Balancer_V2':
+        print(f'swap {pool_num}, sell symbol: {sell_symbol}, buy symbol: {buy_symbol}')
+        print(pool)
+
+        if pool['protocol'] == BALANCER_V2:
             price_impact_function = constant_mean_price_impact
+        elif pool['protocol'] == DODO:
+            price_impact_function = dodo_price_impact
         else:
             price_impact_function = xyk_price_impact
 
@@ -155,13 +264,24 @@ def get_max_amount_for_impact_limit(g, path: dict) -> float:
             token = 0
 
         left = 0
-        right = float(pool[f'reserve{token}'])  # Start with the entire pool's balance as the upper limit
-        epsilon = 1e-6  # Tolerance level for binary search
+        right = float(pool[f'reserve{token}']) * 10  # Start with the entire pool's balance as the upper limit
 
+        # Tolerance level for binary search
+        if pool['protocol'] == DODO:
+            epsilon = 5
+        else:
+            epsilon = 1e-6  
+
+        print(f'(left: {left} - right: {right}) > epsilon: {epsilon}', right - left > epsilon)
         while right - left > epsilon:
             mid = (left + right) / 2
             price_impact_data = price_impact_function(pool, sell_symbol, mid)
             price_impact = price_impact_data['price_impact']
+
+            print(f'sell amount: {mid} {sell_symbol}')
+            print(f'price impact: {price_impact}%')
+            print(f'minimum return: {price_impact_data["actual_return"]} {buy_symbol}')
+            print()
 
             if price_impact < MAX_PRICE_IMPACT:
                 left = mid

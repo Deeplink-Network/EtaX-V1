@@ -12,7 +12,7 @@ import sys
 if os.path.exists(".env"):
     dotenv.load_dotenv(".env")
 
-# use a .env file to store and retrieve your infura key
+# grab keys from environment variables
 INFURA_KEY = os.getenv("ETAX_INFURA_KEY", default=None)
 INFURA_SECRET = os.getenv("ETAX_INFURA_SECRET", default=None)
 # strip the quotes from the infura key if they exist

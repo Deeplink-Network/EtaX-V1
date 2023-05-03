@@ -3,7 +3,7 @@ This module is used to traverse the paths and calculate the price impact at each
 '''
 
 # local imports
-from price_impact_calculator import xyk_price_impact, get_max_amount_for_impact_limit, constant_mean_price_impact
+from price_impact_calculator import xyk_price_impact, get_max_amount_for_impact_limit, constant_mean_price_impact, dodo_price_impact
 from gas_fee_estimator import get_gas_fee_in_eth
 # standard library imports
 import networkx as nx
@@ -14,20 +14,21 @@ G = nx.DiGraph()
 
 # calculate routes
 def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symbol: str, buy_symbol: str) -> dict:
+    print("calculate_routes function called")
     gas_fee = get_gas_fee_in_eth()
     count = 0
     routes = {}
     for path in paths:
-        # print(f'path {count}')
         try:
             swap_number = 0
             for pool in path:
                 protocol = G.nodes[pool]['pool']['protocol']
                 dangerous = G.nodes[pool]['pool']['dangerous']
-                # print(f'swap {swap_number}')
 
                 if protocol == 'Balancer_V2':
                     price_impact_function = constant_mean_price_impact
+                elif protocol == 'DODO':
+                    price_impact_function = dodo_price_impact
                 else:
                     price_impact_function = xyk_price_impact
 
@@ -36,7 +37,9 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
                     print(f'using price impact function {price_impact_function.__name__}')
                     values = price_impact_function(
                         G.nodes[pool]['pool'], sell_symbol, sell_amount)
-                    # print(values)
+
+                    print(values)
+
                     output_symbol = values['buy_symbol']
                     output_amount = values['actual_return']
                     price_impact = values['price_impact']
@@ -66,6 +69,9 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
                     print(f'using price impact function {price_impact_function.__name__}')
                     values = price_impact_function(
                         G.nodes[pool]['pool'], output_symbol, output_amount)
+
+                    print(values)
+
                     # print(values)
                     output_symbol = values['buy_symbol']
                     output_amount = values['actual_return']
@@ -104,7 +110,7 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
             # redundant error check, delete the route if it doesn't work
             if f'route_{count}' in routes:
                 del routes[f'route_{count}']
-            # print(e)
+            print(e)
             continue
 
         # sort routes by amount out
@@ -114,17 +120,27 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
 
 
 def get_sub_route(g, path: dict, new_sell_amount: float, sell_symbol: str, p: float, gas_fee: float):
+    print("get_sub_route function called")
     route = {'percent': p}
     swap_no = 0
     for pool in path:
         protocol = g.nodes[pool]['pool']['protocol']
         dangerous = g.nodes[pool]['pool']['dangerous']
-        price_impact_function = constant_mean_price_impact if protocol == 'Balancer_V2' else xyk_price_impact
+
+        if protocol == 'Balancer_V2':
+            price_impact_function = constant_mean_price_impact
+        elif protocol == 'DODO':
+            price_impact_function = dodo_price_impact
+        else:
+            price_impact_function = xyk_price_impact
 
         if pool == path[0]:
             # get the price impact calculator values
             values = price_impact_function(
                 g.nodes[pool]['pool'], sell_symbol, new_sell_amount)
+
+            print(values)
+
             output_symbol = values['buy_symbol']
             output_amount = values['actual_return']
             price_impact = values['price_impact']
@@ -149,6 +165,9 @@ def get_sub_route(g, path: dict, new_sell_amount: float, sell_symbol: str, p: fl
             old_input_symbol = output_symbol
             values = price_impact_function(
                 g.nodes[pool]['pool'], output_symbol, output_amount)
+
+            print(values)
+
             output_symbol = values['buy_symbol']
             output_amount = values['actual_return']
             price_impact = values['price_impact']
@@ -176,6 +195,7 @@ def get_sub_route(g, path: dict, new_sell_amount: float, sell_symbol: str, p: fl
 
 def get_final_route(g, routes: dict, sell_amount: float, sell_symbol: str) -> list:
     """Given a list of valid routes, sorted by amount out, get a final path which may split the order into multiple paths."""
+    print('getting final route')
     final_route = {'paths': []}
     remaining = sell_amount
     gas_fee = get_gas_fee_in_eth()
