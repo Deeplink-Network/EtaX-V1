@@ -38,10 +38,10 @@ async def main():
     # filter for:
     sell_id = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
     sell_symbol = 'USDC'
-    buy_id = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
-    buy_symbol = 'WETH'
+    buy_id = '0xdac17f958d2ee523a2206206994597c13d831ec7'
+    buy_symbol = 'USDT'
 
-    '''# test for DODO only
+    # test for DODO only
     print(f"testing filtering for {sell_symbol} -> {buy_symbol}... on {DODO}")
     filtered_pools = filter_pools(sell_symbol, sell_id, buy_symbol, buy_id, exchanges=DODO)
     # save the filtered pools
@@ -49,19 +49,19 @@ async def main():
         json.dump(filtered_pools, f)
 
     print(f"testing routing for {sell_symbol} -> {buy_symbol}... on {DODO}")
-    routes = await route_orders(sell_symbol, sell_id, 100_000, buy_symbol, buy_id, exchanges=DODO, split=False)
+    routes = await route_orders(sell_symbol, sell_id, 10_000, buy_symbol, buy_id, exchanges=DODO, split=False)
 
     print(f"testing route splitting for {sell_symbol} -> {buy_symbol}... on {DODO}")
-    split_routes = await route_orders(sell_symbol, sell_id, 100_000, buy_symbol, buy_id, exchanges=DODO, split=True)
+    split_routes = await route_orders(sell_symbol, sell_id, 10_000, buy_symbol, buy_id, exchanges=DODO, split=True)
 
     # save the routes
     with open('test_results\\DODO_routes.json', 'w') as f:
         json.dump(routes, f)
 
     with open('test_results\\DODO_split_routes.json', 'w') as f:
-        json.dump(split_routes, f)'''
+        json.dump(split_routes, f)
 
-    # test for Pancake only
+    '''# test for Pancake only
     print(f"testing filtering for {sell_symbol} -> {buy_symbol}... on {PANCAKESWAP_V3}")
     filtered_pools = filter_pools(sell_symbol, sell_id, buy_symbol, buy_id, exchanges=PANCAKESWAP_V3)
     # save the filtered pools
@@ -80,7 +80,7 @@ async def main():
 
     # save the split routes 
     with open('test_results\\PANCAKESWAP_V3_split_routes.json', 'w') as f:
-        json.dump(split_routes, f)
+        json.dump(split_routes, f)'''
 
     '''# repeat the routing tests for Balancer
     print(f"testing filtering for {sell_symbol} -> {buy_symbol}... on {BALANCER_V2}")
