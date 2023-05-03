@@ -17,13 +17,13 @@ import time
 MAX_ORDERS = 20
 
 DEX_LIST = (
-    #UNISWAP_V2,
-    #UNISWAP_V3,
-    #SUSHISWAP_V2,
+    UNISWAP_V2,
+    UNISWAP_V3,
+    SUSHISWAP_V2,
     CURVE,
     BALANCER_V2,
-    #DODO,
-    #PANCAKESWAP_V3
+    DODO,
+    PANCAKESWAP_V3
 )
 
 DEX_METRIC_MAP = {

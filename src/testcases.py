@@ -59,7 +59,7 @@ async def main():
         json.dump(routes, f)
 
     with open('test_results\\DODO_split_routes.json', 'w') as f:
-        json.dump(split_routes, f)
+        json.dump(split_routes, f)'''
 
     # test for Pancake only
     print(f"testing filtering for {sell_symbol} -> {buy_symbol}... on {PANCAKESWAP_V3}")
@@ -80,9 +80,9 @@ async def main():
 
     # save the split routes 
     with open('test_results\\PANCAKESWAP_V3_split_routes.json', 'w') as f:
-        json.dump(split_routes, f)'''
+        json.dump(split_routes, f)
 
-    # repeat the routing tests for Balancer
+    '''# repeat the routing tests for Balancer
     print(f"testing filtering for {sell_symbol} -> {buy_symbol}... on {BALANCER_V2}")
     filtered_pools = filter_pools(sell_symbol, sell_id, buy_symbol, buy_id, exchanges=BALANCER_V2)
     # save the filtered pools
@@ -101,7 +101,7 @@ async def main():
 
     # save the split routes
     with open('test_results\\BALANCER_split_routes.json', 'w') as f:
-        json.dump(split_routes, f)
+        json.dump(split_routes, f)'''
     
 
 if __name__ == '__main__':
