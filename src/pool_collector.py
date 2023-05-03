@@ -290,6 +290,9 @@ async def collect_curve_pools():
                 try:
                     pairs = combinations(pool['coins'], 2)
                     for pair in pairs:
+                        # Check if either usdPrice is None and skip this pair if true
+                        if pair[0]['usdPrice'] is None or pair[1]['usdPrice'] is None:
+                            continue
                         # print(f"pool: {pool.get('name', 'NONE')}, pair: {pair[0]['symbol']}-{pair[1]['symbol']}")
 
                         decimals0 = int(pair[0]['decimals'])

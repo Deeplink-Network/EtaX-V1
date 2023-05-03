@@ -36,10 +36,10 @@ async def main():
         json.dump(pools, f)
     
     # filter for:
-    sell_id = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
-    sell_symbol = 'WETH'
-    buy_id = '0x6b175474e89094c44da98b954eedeac495271d0f'
-    buy_symbol = 'DAI'
+    sell_id = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+    sell_symbol = 'USDC'
+    buy_id = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
+    buy_symbol = 'WETH'
 
     '''# test for DODO only
     print(f"testing filtering for {sell_symbol} -> {buy_symbol}... on {DODO}")
@@ -65,14 +65,14 @@ async def main():
     print(f"testing filtering for {sell_symbol} -> {buy_symbol}... on {PANCAKESWAP_V3}")
     filtered_pools = filter_pools(sell_symbol, sell_id, buy_symbol, buy_id, exchanges=PANCAKESWAP_V3)
     # save the filtered pools
-    with open('test_results\\DODO_filtered_pools.json', 'w') as f:
+    with open('test_results\\PANCAKESWAP_V3_filtered_pools.json', 'w') as f:
         json.dump(filtered_pools, f)
 
     print(f"testing routing for {sell_symbol} -> {buy_symbol}... on {PANCAKESWAP_V3}")
-    routes = await route_orders(sell_symbol, sell_id, 100_000, buy_symbol, buy_id, exchanges=PANCAKESWAP_V3, split=False)
+    routes = await route_orders(sell_symbol, sell_id, 100, buy_symbol, buy_id, exchanges=PANCAKESWAP_V3, split=False)
 
     print(f"testing route splitting for {sell_symbol} -> {buy_symbol}... on {PANCAKESWAP_V3}")
-    split_routes = await route_orders(sell_symbol, sell_id, 100_000, buy_symbol, buy_id, exchanges=PANCAKESWAP_V3, split=True)
+    split_routes = await route_orders(sell_symbol, sell_id, 100, buy_symbol, buy_id, exchanges=PANCAKESWAP_V3, split=True)
 
     # save the routes
     with open('test_results\\PANCAKESWAP_V3_routes.json', 'w') as f:
