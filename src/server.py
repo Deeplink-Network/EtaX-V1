@@ -27,6 +27,10 @@ async def refresh_all_pools():
 def pool_thread_task():
     asyncio.run(refresh_all_pools())
 
+@app.route('/DEX_LIST', methods=['GET'])
+async def get_dex_list():
+    return jsonify(DEX_LIST)
+
 @app.route('/order_router_split', methods=['GET'])
 async def order_router_split():
     sell_symbol = str(request.args.get('sell_symbol'))

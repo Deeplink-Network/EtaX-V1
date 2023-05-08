@@ -42,7 +42,10 @@ def get_partner_id(node: str, current_id: int, G: nx.classes.digraph.Graph) -> i
     node_data = G.nodes[node]
     ids = [node_data['token0']['id'], node_data['token1']['id']]
     # find the index of the current ID
-    current_index = ids.index(current_id)
+    try:
+        current_index = ids.index(current_id)
+    except:
+        return False # bit of a bandaid fix to the unusual token ticker problem, should probably rework the graph construction
     # return the ID at the other index
     return ids[(current_index + 1) % len(ids)]
 
@@ -54,6 +57,8 @@ def check_path_validity(G: nx.classes.digraph.Graph, path: list, sell_id: int, b
         # for the first node
         if node == path[0]:
             output_id = get_partner_id(node, sell_id, G)
+            if output_id == False:
+                return False
         # for the other nodes
         else:
             # check if output_id is exactly one of the IDs in the node

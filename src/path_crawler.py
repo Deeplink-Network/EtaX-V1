@@ -3,7 +3,7 @@ This module is used to traverse the paths and calculate the price impact at each
 '''
 
 # local imports
-from price_impact_calculator import xyk_price_impact, get_max_amount_for_impact_limit
+from price_impact_calculator import xyk_price_impact, get_max_amount_for_impact_limit, constant_mean_price_impact, dodo_price_impact
 from gas_fee_estimator import get_gas_fee_in_eth
 # standard library imports
 import networkx as nx
@@ -18,18 +18,24 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
     count = 0
     routes = {}
     for path in paths:
-        print(f'path {count}')
         try:
             swap_number = 0
             for pool in path:
                 protocol = G.nodes[pool]['pool']['protocol']
                 dangerous = G.nodes[pool]['pool']['dangerous']
-                print(f'swap {swap_number}')
+
+                if protocol == 'Balancer_V1' or protocol == 'Balancer_V2':
+                    price_impact_function = constant_mean_price_impact
+                elif protocol == 'DODO':
+                    price_impact_function = dodo_price_impact
+                else:
+                    price_impact_function = xyk_price_impact
+
                 if pool == path[0]:
                     # get the price impact calculator values
-                    values = xyk_price_impact(
+                    values = price_impact_function(
                         G.nodes[pool]['pool'], sell_symbol, sell_amount)
-                    # {'actual_return': actual_return, 'price_impact': price_impact, 'buy_symbol': pool[f'token{buy_token}']['symbol'], 'description': description}
+
                     output_symbol = values['buy_symbol']
                     output_amount = values['actual_return']
                     price_impact = values['price_impact']
@@ -56,9 +62,10 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
                 else:
                     input_amount = output_amount
                     old_input_symbol = output_symbol
-                    values = xyk_price_impact(
+                    values = price_impact_function(
                         G.nodes[pool]['pool'], output_symbol, output_amount)
-                    # {'actual_return': actual_return, 'price_impact': price_impact, 'buy_symbol': pool[f'token{buy_token}']['symbol'], 'description': description}
+
+                    # print(values)
                     output_symbol = values['buy_symbol']
                     output_amount = values['actual_return']
                     price_impact = values['price_impact']
@@ -91,7 +98,7 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
             routes[f'route_{count}']['price_impact'] = sum(
                 [routes[f'route_{count}'][f'swap_{i}']['price_impact'] for i in range(swap_number)])
             count += 1
-            print('------------------------------------------------------------')
+            # print('------------------------------------------------------------')
         except Exception as e:
             # redundant error check, delete the route if it doesn't work
             if f'route_{count}' in routes:
@@ -99,7 +106,7 @@ def calculate_routes(G: nx.DiGraph(), paths: list, sell_amount: float, sell_symb
             print(e)
             continue
 
-    # sort routes by amount out
+        # sort routes by amount out
     routes = sorted(
         routes.items(), key=lambda item: item[1]['amount_out'], reverse=True)
     return routes
@@ -111,11 +118,19 @@ def get_sub_route(g, path: dict, new_sell_amount: float, sell_symbol: str, p: fl
     for pool in path:
         protocol = g.nodes[pool]['pool']['protocol']
         dangerous = g.nodes[pool]['pool']['dangerous']
+
+        if protocol == 'Balancer_V1' or protocol == 'Balancer_V2':
+            price_impact_function = constant_mean_price_impact
+        elif protocol == 'DODO':
+            price_impact_function = dodo_price_impact
+        else:
+            price_impact_function = xyk_price_impact
+
         if pool == path[0]:
             # get the price impact calculator values
-            values = xyk_price_impact(
+            values = price_impact_function(
                 g.nodes[pool]['pool'], sell_symbol, new_sell_amount)
-            # {'actual_return': actual_return, 'price_impact': price_impact, 'buy_symbol': pool[f'token{buy_token}']['symbol'], 'description': description}
+
             output_symbol = values['buy_symbol']
             output_amount = values['actual_return']
             price_impact = values['price_impact']
@@ -138,9 +153,9 @@ def get_sub_route(g, path: dict, new_sell_amount: float, sell_symbol: str, p: fl
         else:
             input_amount = output_amount
             old_input_symbol = output_symbol
-            values = xyk_price_impact(
+            values = price_impact_function(
                 g.nodes[pool]['pool'], output_symbol, output_amount)
-            # {'actual_return': actual_return, 'price_impact': price_impact, 'buy_symbol': pool[f'token{buy_token}']['symbol'], 'description': description}
+
             output_symbol = values['buy_symbol']
             output_amount = values['actual_return']
             price_impact = values['price_impact']
@@ -199,8 +214,14 @@ def get_final_route(g, routes: dict, sell_amount: float, sell_symbol: str) -> li
         [route[f'swap_{len(route)-2}']['output_amount'] for route in routes])
     final_route['gas_fee'] = sum(
         [route[f'swap_{len(route)-2}']['gas_fee'] for route in routes])
-    final_route['price'] = sell_amount/final_route['output_amount']
+    
+    # handles cases where output amount approaches 0
+    try:
+        final_route['price'] = sell_amount/final_route['output_amount']
+    except ZeroDivisionError:
+        k = 1e-9  # arbitrarily small number, not too close to 0
+        final_route['price'] = sell_amount / (final_route['output_amount'] + k)
+
     final_route['price_impact'] = sum(
         [route[f'swap_{len(route)-2}']['price_impact'] for route in routes]) / (len(final_route) - 3)
-    # print(json.dumps(final_route, indent=4))
     return final_route
