@@ -273,6 +273,7 @@ def get_max_amount_for_impact_limit(g, path: dict) -> float:
         else:
             epsilon = 1e-6  
 
+
         while right - left > epsilon:
             mid = (left + right) / 2
             price_impact_data = price_impact_function(pool, sell_symbol, mid)

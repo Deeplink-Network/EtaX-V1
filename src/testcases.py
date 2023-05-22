@@ -37,7 +37,7 @@ async def main():
     sell_symbol = 'USDC'
     buy_id = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
     buy_symbol = 'WETH'
-    sell_amount = 10
+    sell_amount = 1
 
     for exchange in DEX_LIST:
         print(f"testing filtering for {sell_symbol} -> {buy_symbol} on {exchange}...")
