@@ -61,7 +61,7 @@ async def order_router():
 
     print('ORDER ROUTER CALLED')
 
-    result = await route_orders(sell_symbol, sell_ID, sell_amount, buy_symbol, buy_ID, exchanges, split=False)
+    result = await route_orders(sell_symbol, sell_ID, sell_amount, buy_symbol, buy_ID, exchanges, split=False) # add routing strategy param
 
     return jsonify(result)
 
