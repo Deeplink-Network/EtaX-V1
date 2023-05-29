@@ -242,12 +242,16 @@ def constant_mean_price_impact(pool: dict, sell_symbol: str, sell_amount: float)
 
 
 def get_max_amount_for_impact_limit(g, path: dict) -> float:
-    pool_num = len(path) - 7
+    pool_num = sum(key.startswith('swap_') for key in path) - 1 # more consistent than len(path) - X, need to remember not to add any keys that start with swap_
+    print(f'pool_num: {pool_num}')
+    print('path:')
+    print(path)
     sell_amount = None
     next_pool_amount = 10e30
 
     while pool_num >= 0:
         swap = path[f'swap_{pool_num}']
+        print(swap)
         pool = g.nodes[swap['pool']]['pool']
         sell_symbol = swap['input_token']
         buy_symbol = swap['output_token']
