@@ -12,7 +12,6 @@ CORS(app)
 
 loop = asyncio.get_event_loop()
 
-
 async def refresh_all_pools():
     refresh_tasks = [refresh_pools(dex) for dex in DEX_LIST]
     try:
@@ -62,6 +61,22 @@ async def order_router():
     print('ORDER ROUTER CALLED')
 
     result = await route_orders(sell_symbol, sell_ID, sell_amount, buy_symbol, buy_ID, exchanges, split=False) # add routing strategy param
+
+    return jsonify(result)
+
+@app.route('/best_match_order_router', methods=['GET'])
+async def best_match_order_router():
+    sell_symbol = str(request.args.get('sell_symbol'))
+    sell_ID = str(request.args.get('sell_ID'))
+    sell_amount = float(request.args.get('sell_amount'))
+    exchanges = request.args.get('exchanges', DEX_LIST)
+    
+    buy_symbol = sell_symbol
+    buy_ID = sell_ID
+    
+    print('ORDER ROUTER CALLED')
+
+    result = await route_orders(sell_symbol, sell_ID, sell_amount, buy_symbol, buy_ID, exchanges, split=True, routing_strategy='best_match')
 
     return jsonify(result)
 

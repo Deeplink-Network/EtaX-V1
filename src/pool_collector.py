@@ -8,7 +8,6 @@ from constants import UNISWAP_V2, UNISWAP_V3, SUSHISWAP_V2, CURVE, BALANCER_V1, 
 # standard library imports
 import asyncio
 import aiohttp
-import sys
 import json
 from itertools import combinations
 import logging
@@ -399,11 +398,44 @@ def reformat_balancer_v2_pools(pool_list):
                     'totalBalanceUSD': token1['token']['totalBalanceUSD'],
                     'priceUSD': token1['token']['latestUSDPrice'],
                 },
-                'reserveUSD': float(token0['token']['totalBalanceUSD']) + float(token1['token']['totalBalanceUSD']),
+                # 'reserveUSD': float(token0['token']['totalBalanceUSD']) + float(token1['token']['totalBalanceUSD']),
                 'protocol': 'Balancer_V2',
             }
             reformatted_pools.append(new_pair)
             new_pair['dangerous'] = new_pair['token0']['symbol'] in BAD_TOKEN_SYMS or new_pair['token1']['symbol'] in BAD_TOKEN_SYMS
+            # check if priceUSD is None and calculate it if it is
+            if new_pair['token0']['priceUSD'] is None:
+                try:
+                    new_pair['token0']['priceUSD'] = float(new_pair['token0']['totalBalanceUSD']) / float(new_pair['reserve0'])
+                except ZeroDivisionError:
+                    new_pair['token0']['priceUSD'] = 0
+            if new_pair['token1']['priceUSD'] is None:
+                try:
+                    new_pair['token1']['priceUSD'] = float(new_pair['token1']['totalBalanceUSD']) / float(new_pair['reserve1'])
+                except ZeroDivisionError:
+                    new_pair['token1']['priceUSD'] = 0
+            # calculate reserveUSD
+            '''
+            use this logic:
+            totalLiquidity = 6809675
+            reserve0 = 2596148429267441
+            reserve1 = 1511
+            totalReserve = reserve0 + reserve1
+
+            proportion0 = reserve0 / totalReserve
+            proportion1 = reserve1 / totalReserve
+
+            priceUSD0 = 1863
+            priceUSD1 = 1766
+
+
+            reserveUSD = totalLiquidity * priceUSD0 * proportion0 + totalLiquidity * priceUSD1 * proportion1
+            '''
+            try:
+                reserveUSD = float(new_pair['totalLiquidity']) * float(new_pair['token0']['priceUSD']) * (float(new_pair['reserve0']) / (float(new_pair['reserve0']) + float(new_pair['reserve1']))) + float(new_pair['totalLiquidity']) * float(new_pair['token1']['priceUSD']) * (float(new_pair['reserve1']) / (float(new_pair['reserve0']) + float(new_pair['reserve1'])))
+                new_pair['reserveUSD'] = reserveUSD
+            except ZeroDivisionError:
+                new_pair['reserveUSD'] = 0
 
         return reformatted_pools
 
@@ -459,7 +491,7 @@ async def collect_curve_pools():
                         res.append(new_pair)
                 except Exception as e:
                     print(e)
-                    print(pool)
+                    # print(pool)
                     break
     return res
 
@@ -599,8 +631,13 @@ async def get_latest_pool_data(protocol: str, X: int = 1000, skip: int = 0, max_
                             pool['reserve0'] = reserve0
                             pool['reserve1'] = reserve1
                             try:
-                                pool['token0']['priceUSD'] = float(pool['totalValueLockedUSD']) / float(pool['reserve0'])
-                                pool['token1']['priceUSD'] = float(pool['totalValueLockedUSD']) / float(pool['reserve1'])
+                                # Calculate the total value in terms of token0
+                                total_value_token0 = float(pool['totalValueLockedToken0']) + float(pool['token1Price']) * float(pool['totalValueLockedToken1'])
+                                # Calculate the total value in terms of token1
+                                total_value_token1 = float(pool['totalValueLockedToken1']) + 1/float(pool['token0Price']) * float(pool['totalValueLockedToken0'])
+                                # Calculate the price of each token
+                                pool['token0']['priceUSD'] = float(pool['totalValueLockedUSD']) / total_value_token0
+                                pool['token1']['priceUSD'] = float(pool['totalValueLockedUSD']) / total_value_token1
                             except Exception as e:
                                 print(e)
                                 print(pool)
@@ -639,13 +676,15 @@ async def get_latest_pool_data(protocol: str, X: int = 1000, skip: int = 0, max_
                     return pools
         # this sometimes fails but works on the next try, retry until it works
         except KeyError as e:
-            print(e)
+            logging.error("Key error while fetching pools, retrying...")
             continue
         except asyncio.exceptions.TimeoutError as e:
             logging.error("Timeout error while fetching pools, retrying...")
+            # print(protocol)
             continue
         except Exception as e:
             logging.error("Error while fetching pools, retrying...")
+            #print(protocol)
             logging.error(e)
             continue
         

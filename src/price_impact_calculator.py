@@ -10,7 +10,7 @@ from web3 import Web3
 import requests
 import numpy as np
 
-MAX_PRICE_IMPACT = 50
+MAX_PRICE_IMPACT = 40
 
 KEEPER_ADDRESS = Web3.to_checksum_address('0x6c51B510C83288831aDfdC4B76F461d41b45ad07')
 

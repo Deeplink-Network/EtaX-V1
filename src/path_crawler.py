@@ -277,15 +277,19 @@ def get_final_route(g, routes: dict, sell_amount: float, sell_symbol: str) -> li
     routes = final_route['paths']
     final_route['output_amount'] = sum(
         [route[f'swap_{len(route)-2}']['output_amount'] for route in routes])
+    final_route['output_amount_usd'] = sum(
+        [route[f'swap_{len(route)-2}']['output_amount_usd'] for route in routes])
     final_route['gas_fee'] = sum(
         [route[f'swap_{len(route)-2}']['gas_fee'] for route in routes])
     
     # handles cases where output amount approaches 0
     try:
         final_route['price'] = sell_amount/final_route['output_amount']
+        final_route['price_usd'] = sell_amount/final_route['output_amount_usd']
     except ZeroDivisionError:
         k = 1e-9  # arbitrarily small number, not too close to 0
         final_route['price'] = sell_amount / (final_route['output_amount'] + k)
+        final_route['price_usd'] = sell_amount / (final_route['output_amount_usd'] + k)
 
     final_route['price_impact'] = sum(
         [route[f'swap_{len(route)-2}']['price_impact'] for route in routes]) / (len(final_route) - 3)

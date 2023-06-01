@@ -120,7 +120,10 @@ paths:
                     description: The total gas fee for all routes
                   output_amount:
                     type: number
-                    description: The total output amount for all routes
+                    description: The total output amount for all routes expressed in the token
+                  output_amount_usd:
+                    type: number
+                    description: The total output amount for all routes expressed in USD
                   price:
                     type: number
                     description: The total price for all routes
@@ -152,13 +155,19 @@ paths:
                               description: The gas fee for the swap
                             input_amount:
                               type: number
-                              description: The input amount for the swap
+                              description: The input amount for the swap expressed in the token
+                            input_amount_usd:
+                              type: number
+                              description: The input amount for the swap expressed in USD
                             input_token:
                               type: string
                               description: The input token for the swap
                             output_amount:
                               type: number
-                              description: The output amount for the swap
+                              description: The output amount for the swap expressed in the token
+                            output_amount_usd:
+                              type: number
+                              description: The output amount for the swap expressed in USD
                             output_token:
                               type: string
                               description: The output token for the swap
@@ -167,7 +176,10 @@ paths:
                               description: The pool for the swap
                             price:
                               type: number
-                              description: The price for the swap
+                              description: The price for the swap expressed in the token
+                            price_usd:
+                              type: number
+                              description: The price for the swap expressed in USD
                             price_impact:
                               type: number
                               description: The price impact for the swap

@@ -83,6 +83,21 @@ async def main():
     with open(f'test_results\\all_split_routes.json', 'w') as f:
         json.dump(split_routes, f)
 
+    # test some best match order routing
+    print(f"testing best match order routing for {sell_symbol} -> {buy_symbol}... on all exchanges")
+    routes = await route_orders(sell_symbol, sell_id, sell_amount, buy_symbol, buy_id, exchanges=DEX_LIST, split=False, routing_strategy='best_match')
+
+    print(f"testing best match order route splitting for {sell_symbol} -> {buy_symbol}... on all exchanges")
+    split_routes = await route_orders(sell_symbol, sell_id, sell_amount, buy_symbol, buy_id, exchanges=DEX_LIST, split=True, routing_strategy='best_match')
+
+    # save the routes
+    with open(f'test_results\\all_best_match_routes.json', 'w') as f:
+        json.dump(routes, f)
+
+    # save the split routes
+    with open(f'test_results\\all_best_match_split_routes.json', 'w') as f:
+        json.dump(split_routes, f)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
