@@ -1,6 +1,5 @@
 from smart_order_router import route_orders, refresh_pools, DEX_LIST
 from threading import Thread
-from multiprocessing import Process
 from flask import Flask, request, jsonify, redirect
 from flask_cors import CORS
 import asyncio
@@ -45,6 +44,7 @@ def pool_thread_task():
     
 @app.route('/', methods=['GET'])
 def index():
+    print('DOCS ACCESSED')
     return redirect('/api/docs')
 
 @app.route('/DEX_LIST', methods=['GET'])
