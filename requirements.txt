@@ -7,3 +7,5 @@ matplotlib
 networkx
 web3
 python-dotenv
+flask_swagger_ui
+whitenoise
