@@ -1,14 +1,31 @@
 from smart_order_router import route_orders, refresh_pools, DEX_LIST
 from threading import Thread
 from multiprocessing import Process
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, redirect
 from flask_cors import CORS
 import asyncio
 import time
 import requests
+from flask_swagger_ui import get_swaggerui_blueprint
+from whitenoise import WhiteNoise
 
 app = Flask(__name__)
 CORS(app)
+app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/')
+
+SWAGGER_URL = '/api/docs'  # URL for exposing Swagger UI (without trailing '/')
+API_URL = '/static/swagger.yaml'  # Our Swagger schema file
+
+# Call factory function to create our blueprint
+swaggerui_blueprint = get_swaggerui_blueprint(
+    SWAGGER_URL,  
+    API_URL,
+    config={  # Swagger UI config overrides
+        'app_name': "Smart Order Router"
+    }
+)
+
+app.register_blueprint(swaggerui_blueprint)
 
 loop = asyncio.get_event_loop()
 
@@ -25,6 +42,10 @@ async def refresh_all_pools():
 
 def pool_thread_task():
     asyncio.run(refresh_all_pools())
+    
+@app.route('/', methods=['GET'])
+def index():
+    return redirect('/api/docs')
 
 @app.route('/DEX_LIST', methods=['GET'])
 async def get_dex_list():

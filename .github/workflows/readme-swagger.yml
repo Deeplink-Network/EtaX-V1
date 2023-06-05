@@ -20,4 +20,4 @@ jobs:
       - name: Run `openapi` command 🚀
         uses: readmeio/rdme@v8
         with:
-          rdme: openapi src/swagger.yml --key=${{ secrets.README_API_KEY }} --id=63ea002866f479007a83e813
+          rdme: openapi src/static/swagger.yaml --key=${{ secrets.README_API_KEY }} --id=63ea002866f479007a83e813

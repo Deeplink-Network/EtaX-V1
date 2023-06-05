@@ -1,7 +1,7 @@
 swagger: "2.0"
 
 info:
-  title: Order Router
+  title: Eta X
   version: 1.0.0
 
 schemes:
@@ -61,7 +61,7 @@ paths:
                 description: A dictionary of lists mapping each node to its neighbors
               routes:
                 type: object
-                description: A dictionary of routes, each route contains the input amount, output amount, price, gas fee, and the nodes in the route. Each route also has a key for each swap in the route, each swap contains the pool, input token, input amount, output token, output amount, price impact, price, gas fee, and description
+                description: A dictionary of routes, each route contains the input amount, output amount, price, gas fee, and the nodes in the route. Each route also has a key for each swap in the route, each swap contains the pool, input token, input amount, output token, output amount, price impact, price, gas fee, price_usd, input_amount_usd, output_amount_usd, and description
 
   /order_router_split:
     get:
@@ -99,7 +99,7 @@ paths:
           items:
             type: string
           required: false
-          description: The exchanges to include in the route. Defaults to all if not provided. Current options are "Uniswap_V2", "Uniswap_V3", "Sushiwap_V2", "Curve"
+          description: The exchanges to include in the route. Defaults to all if not provided. Current options are "Uniswap_V2", "Uniswap_V          3", "Sushiwap_V2", "Curve"
       responses:
         200:
           description: Success
@@ -127,6 +127,9 @@ paths:
                   price:
                     type: number
                     description: The total price for all routes
+                  price_usd:
+                    type: number
+                    description: The total price for all routes expressed in USD
                   price_impact:
                     type: number
                     description: The total price impact for all routes
@@ -186,4 +189,100 @@ paths:
                           description:
                             A swap in the route. 'n' is the swap number, starting at 0.
                     description: A list of paths the order is to be split into.
-                description: A dictionary of individual paths and metadata for the whole route, including the output amount, the overall price, the overall gas fee, and the average price impact. Each path contains the input amount, output amount, the percentage of how much the original order was sent to the path, the price, gas fee, and the nodes in the path. Each path also has a key for each swap in the path, each swap contains the pool, input token, input amount, output token, output amount, price impact, price, gas fee, and description
+                description: A dictionary of individual paths and metadata for the whole route, including the output amount, the overall price, the overall gas fee, and the average price impact. Each path contains the input amount, output amount, the percentage of how much the original order was sent to the path, the price, gas fee, and the nodes in the path. Each path also has a key for each swap in the path, each swap contains the pool, input token, input amount, output token, output amount, price impact, price, gas fee, price_usd, input_amount_usd, output_amount_usd, and description
+  
+  /best_match_order_router:
+    get:
+      description: Route an order with any output that maximizes USD returns
+      operationId: best_match_order_router
+      parameters:
+        - in: query
+          name: sell_symbol
+          type: string
+          required: true
+          description: The symbol of the token to sell
+        - in: query
+          name: sell_ID
+          type: string
+          required: true
+          description: The ID of the token to sell
+        - in: query
+          name: sell_amount
+          type: number
+          required: true
+          description: The amount of the token to sell
+        - in: query
+          name: exchanges
+          type: array
+          items:
+            type: string
+          required: false
+          description: The exchanges to include in the route. Defaults to all if not provided. Current options are "Uniswap_V2", "Uniswap_V3", "Sushiwap_V2", "Curve"
+      responses:
+        200:
+          description: Success
+          schema:
+            type: object
+            properties:
+              pool_graph:
+                type: object
+                description: A dictionary of lists mapping each node to its neighbors
+              path_graph:
+                type: object
+                description: A dictionary of lists mapping each node to its neighbors
+              routes:
+                type: object
+                properties:
+                  gas_fee:
+                    type: number
+                    description: The total gas fee for all routes
+                  output_amount:
+                    type: number
+                    description: The total output amount for all routes expressed in the token
+                  output_amount_usd:
+                    type: number
+                    description: The total output amount for all routes expressed in USD
+                  price:
+                    type: number
+                    description: The total price for all routes
+                  price_usd:
+                    type: number
+                    description: The total price for all routes expressed in USD
+                  price_impact:
+                    type: number
+                    description: The total price impact for all routes
+                  paths:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        percent:
+                          type: number
+                          description: The percentage of the original order that was sent to this route
+                        swap_n:
+                          type: object
+                          properties:
+                            description:
+                              type: string
+                              description: A description of the swap
+                            exchange:
+                              type: string
+                              description: The exchange for the swap
+                            dangerous:
+                              type: boolean
+                              description: Whether the swap is dangerous (i.e., goes through a pool which contains a potentially bad token)
+                            gas_fee:
+                              type: number
+                              description: The gas fee for the swap
+                            input_amount:
+                              type: number
+                              description: The input amount for the swap expressed in the token
+                            input_amount_usd:
+                              type: number
+                              description: The input amount for the swap expressed in USD
+                            input_token:
+                              type: string
+                              description: The input token for the swap
+                            output_amount:
+                              type: number
+                              description: The output amount for the swap expressed in the token
